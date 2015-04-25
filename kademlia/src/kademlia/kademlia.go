@@ -31,7 +31,7 @@ func NewKademlia(laddr string) *Kademlia {
 	// TODO: Initialize other state here as you add functionality.
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
-	fmt.Println("......")
+	fmt.Println("!!!!!!!")
 
 	// Set up RPC server
 	// NOTE: KademliaCore is just a wrapper around Kademlia. This type includes
