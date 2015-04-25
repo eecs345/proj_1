@@ -74,6 +74,10 @@ func (k *Kademlia) Update(cc Contact){
 	flag:=0
 	distance :=k.NodeID.Xor(cc.NodeID)
 	entry:=159-distance.PrefixLen()
+	if entry == -1 {
+		fmt.Println("This is myself")
+		return
+	}
 	if k.bucket[entry]==nil{
 		k.bucket[entry]=list.New()
 		k.bucket[entry].PushBack(cc)
@@ -145,12 +149,9 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 		log.Fatal("Call: ", err)
 		return "ERR: Not implemented"
 	}else{
-		k.update(pong.Sender)
+		k.Update(pong.Sender)
 		return "OK: It's good"
 	}
-	fmt.Println(ping.MsgID.AsString())
-	fmt.Println(pong.MsgID.AsString())
-	return "ERR: Not implemented"
 }
 
 func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
