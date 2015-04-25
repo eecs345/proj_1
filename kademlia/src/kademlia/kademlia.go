@@ -9,20 +9,19 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-    "strconv"
-    "container/list"
+  "strconv"
+  "container/list"
 )
 
 const (
 	alpha = 3
 	b     = 8 * IDBytes
 	k     = 20
-	fuck
 )
 
 // Kademlia type. You can put whatever state you need in this.
 type Kademlia struct {
-	NodeID ID
+		NodeID ID
     SelfContact Contact
     bucket []*list.List
 }
@@ -69,14 +68,14 @@ type NotFoundError struct {
 func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("%x %s", e.id, e.msg)
 }
-func (k *Kademlia) update(cc Contact){
+func (k *Kademlia) Update(cc Contact){
 	flag:=0
 	distance :=k.NodeID.Xor(cc.NodeID)
 	entry:=159-distance.PrefixLen()
 	if k.bucket[entry]==nil{
 		k.bucket[entry]=list.New()
 		k.bucket[entry].PushBack(cc)
-	}else{
+	} else{
 		for e := k.bucket[entry].Front(); e != nil; e = e.Next() {
 	// do something with e.Value
 			if e.Value.(Contact).NodeID.Compare(cc.NodeID)==0 {
@@ -85,7 +84,23 @@ func (k *Kademlia) update(cc Contact){
 			}
 		}
 		if flag==0{
-			k.bucket[entry].PushBack(cc)
+			if k.bucket[entry].len() < 20 {
+				k.bucket[entry].PushBack(cc)
+			} else {
+				target := k.bucket[entry].Front()
+				err :=k.DoPing( target.Value.(Contact).Host, target.Value.(Contact).Port)
+				if err == "ERR: Not Response" {
+					k.bucket[entry].Remove(target)
+					k.bucket[entry].PushBack(cc)
+				}
+				else {
+					k.bucket[entry].MoveToBack(target)
+				}
+
+
+
+			}
+
 		}
 	}
 
@@ -96,21 +111,20 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 	// Find contact with provided ID
     if nodeId == k.SelfContact.NodeID {
         return &k.SelfContact, nil
-    }else{
-    	distance :=k.NodeID.Xor(nodeID)
-		entry:=159-distance.PrefixLen()
-		if k.bucket[entry]==nil{
-			return nil, &NotFoundError{nodeId, "Not found"}
-		}else{
-			for e := k.bucket[entry].Front(); e != nil; e = e.Next() {
-				if e.Value.(Contact).NodeID.Compare(nodeID)==0{
-					return e.Value.(*Contact), nil
-				}
-			}
-		}
-    }
-
-	return nil, &NotFoundError{nodeId, "Not found"}
+    } else{
+    		distance :=k.NodeID.Xor(nodeId)
+				entry:=159-distance.PrefixLen()
+				if k.bucket[entry]==nil{
+					return nil, &NotFoundError{nodeId, "Not found"}
+				} else{
+						for e := k.bucket[entry].Front(); e != nil; e = e.Next() {
+							if e.Value.(Contact).NodeID.Compare(nodeId)==0{
+								return e.Value.(Contact), nil
+							}
+						}
+					}
+    	}
+		return nil, &NotFoundError{nodeId, "Not found"}
 }
 
 // This is the function to perform the RPC
