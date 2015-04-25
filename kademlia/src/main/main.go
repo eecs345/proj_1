@@ -23,7 +23,6 @@ func main() {
 	// generate the same sequence of IDs. Use the current nano time to
 	// random numbers
 	rand.Seed(time.Now().UnixNano())
-
 	// Get the bind and connect connection strings from command-line arguments.
 	flag.Parse()
 	args := flag.Args()

@@ -29,6 +29,7 @@ type Kademlia struct {
 
 func NewKademlia(laddr string) *Kademlia {
 	// TODO: Initialize other state here as you add functionality.
+	fmt.Println("hello")
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
 
@@ -57,6 +58,7 @@ func NewKademlia(laddr string) *Kademlia {
     }
     k.bucket= make([]*list.List,160)
     k.SelfContact = Contact{k.NodeID, host, uint16(port_int)}
+
 	return k
 }
 
@@ -68,19 +70,24 @@ type NotFoundError struct {
 func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("%x %s", e.id, e.msg)
 }
+
+
 func (k *Kademlia) Update(cc Contact){
 	flag:=0
 	distance :=k.NodeID.Xor(cc.NodeID)
 	entry:=159-distance.PrefixLen()
+	fmt.Println("test0")
 	if k.bucket[entry]==nil{
 		k.bucket[entry]=list.New()
 		k.bucket[entry].PushBack(cc)
+		fmt.Println("test1")
 	} else{
 		for e := k.bucket[entry].Front(); e != nil; e = e.Next() {
 	// do something with e.Value
 			if e.Value.(Contact).NodeID.Compare(cc.NodeID)==0 {
 				k.bucket[entry].MoveToBack(e)
 				flag=1
+				fmt.Println("test2")
 			}
 		}
 		if flag==0{
@@ -96,9 +103,6 @@ func (k *Kademlia) Update(cc Contact){
 				else {
 					k.bucket[entry].MoveToBack(target)
 				}
-
-
-
 			}
 
 		}
