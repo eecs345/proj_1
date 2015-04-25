@@ -32,6 +32,7 @@ func NewKademlia(laddr string) *Kademlia {
 	fmt.Println("hello")
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
+	fmt.Println("....")
 
 	// Set up RPC server
 	// NOTE: KademliaCore is just a wrapper around Kademlia. This type includes
@@ -58,7 +59,11 @@ func NewKademlia(laddr string) *Kademlia {
     }
     k.bucket= make([]*list.List,160)
     k.SelfContact = Contact{k.NodeID, host, uint16(port_int)}
+<<<<<<< HEAD
 
+=======
+		//k.DoPing(k.SelfContact.Host,k.SelfContact.Port)
+>>>>>>> master
 	return k
 }
 
@@ -70,12 +75,16 @@ type NotFoundError struct {
 func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("%x %s", e.id, e.msg)
 }
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> master
 func (k *Kademlia) Update(cc Contact){
 	flag:=0
 	distance :=k.NodeID.Xor(cc.NodeID)
 	entry:=159-distance.PrefixLen()
+<<<<<<< HEAD
 	fmt.Println("test0")
 	if k.bucket[entry]==nil{
 		k.bucket[entry]=list.New()
@@ -88,9 +97,25 @@ func (k *Kademlia) Update(cc Contact){
 				k.bucket[entry].MoveToBack(e)
 				flag=1
 				fmt.Println("test2")
+=======
+	if entry == -1 {
+		fmt.Println("This is myself")
+		return
+	}
+	if k.bucket[entry]==nil{
+		k.bucket[entry]=list.New()
+		k.bucket[entry].PushBack(cc)
+	} else{
+			for e := k.bucket[entry].Front(); e != nil; e = e.Next() {
+	// do something with e.Value
+				if e.Value.(Contact).NodeID.Compare(cc.NodeID)==0 {
+					k.bucket[entry].MoveToBack(e)
+					flag=1
+				}
+>>>>>>> master
 			}
-		}
 		if flag==0{
+<<<<<<< HEAD
 			if k.bucket[entry].len() < 20 {
 				k.bucket[entry].PushBack(cc)
 			} else {
@@ -105,9 +130,22 @@ func (k *Kademlia) Update(cc Contact){
 				}
 			}
 
+=======
+			if k.bucket[entry].Len()<20 {
+				k.bucket[entry].PushBack(cc)
+			} else {
+				target := k.bucket[entry].Front()
+				err :=k.DoPing(target.Value.(Contact).Host, target.Value.(Contact).Port)
+				if err[0] != 'E' {
+					k.bucket[entry].MoveToBack(target)
+				} else {
+					k.bucket[entry].Remove(target)
+					k.bucket[entry].PushBack(cc)
+				}
+			}
 		}
-	}
-
+>>>>>>> master
+		}
 }
 
 func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
@@ -115,6 +153,7 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 	// Find contact with provided ID
     if nodeId == k.SelfContact.NodeID {
         return &k.SelfContact, nil
+<<<<<<< HEAD
     } else{
     		distance :=k.NodeID.Xor(nodeId)
 				entry:=159-distance.PrefixLen()
@@ -129,13 +168,49 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 					}
     	}
 		return nil, &NotFoundError{nodeId, "Not found"}
+=======
+    }	else{
+    	distance :=k.NodeID.Xor(nodeId)
+			entry:=159-distance.PrefixLen()
+		if k.bucket[entry]==nil{
+			return nil, &NotFoundError{nodeId, "Not found"}
+		}else{
+			for e := k.bucket[entry].Front(); e != nil; e = e.Next() {
+				if e.Value.(Contact).NodeID.Compare(nodeId)==0{
+					return e.Value.(*Contact), nil
+				}
+			}
+		}
+    }
+
+	return nil, &NotFoundError{nodeId, "Not found"}
+>>>>>>> master
 }
 
 // This is the function to perform the RPC
 func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	return "ERR: Not implemented"
+
+	firstPeerStr := host.String()+":"+ strconv.Itoa(int(port))
+	fmt.Println(firstPeerStr)
+	client, err := rpc.DialHTTP("tcp", firstPeerStr)
+	if err != nil {
+		log.Fatal("DialHTTP: ", err)
+		return "ERR: Not implemented"
+	}
+	ping := new(PingMessage)
+	ping.MsgID = NewRandomID()
+	ping.Sender = k.SelfContact
+	var pong PongMessage
+	err = client.Call("KademliaCore.Ping", ping, &pong)
+	if err != nil {
+		log.Fatal("Call: ", err)
+		return "ERR: Not implemented"
+	}else{
+		k.Update(pong.Sender)
+		return "OK: It's good"
+	}
 }
 
 func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
