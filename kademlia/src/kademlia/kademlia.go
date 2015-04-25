@@ -17,6 +17,7 @@ const (
 	alpha = 3
 	b     = 8 * IDBytes
 	k     = 20
+	fuck
 )
 
 // Kademlia type. You can put whatever state you need in this.
