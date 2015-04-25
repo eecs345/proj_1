@@ -86,7 +86,18 @@ func (k *Kademlia) Update(cc Contact){
 				}
 			}
 		if flag==0{
-			k.bucket[entry].PushBack(cc)
+			if k.bucket[entry].Len()<20 {
+				k.bucket[entry].PushBack(cc)
+			} else {
+				target := k.bucket[entry].Front()
+				err :=k.DoPing(target.Value.(Contact).Host, target.Value.(Contact).Port)
+				if err[0] != 'E' {
+					k.bucket[entry].MoveToBack(target)
+				} else {
+					k.bucket[entry].Remove(target)
+					k.bucket[entry].PushBack(cc)
+				}
+			}
 		}
 		}
 }
