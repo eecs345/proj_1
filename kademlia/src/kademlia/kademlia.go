@@ -123,6 +123,7 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	client, err := rpc.DialHTTP("tcp", firstPeerStr)
 	if err != nil {
 		log.Fatal("DialHTTP: ", err)
+		return "ERR: Not implemented"
 	}
 	ping := new(PingMessage)
 	ping.MsgID = NewRandomID()
@@ -131,6 +132,10 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	err = client.Call("KademliaCore.Ping", ping, &pong)
 	if err != nil {
 		log.Fatal("Call: ", err)
+		return "ERR: Not implemented"
+	}else{
+		k.update(pong.Sender)
+		return "OK: It's good"
 	}
 	fmt.Println(ping.MsgID.AsString())
 	fmt.Println(pong.MsgID.AsString())
