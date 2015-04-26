@@ -193,7 +193,7 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	location := contact.Host.String()+":"+ strconv.Itoa(int(Contact.Port))
+	location := contact.Host.String()+":"+ strconv.Itoa(int(contact.Port))
 	client, err := rpc.DialHTTP("tcp", location)
 	if err != nil {
 		log.Fatal("DialHTTP: ", err)
@@ -203,12 +203,13 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	var res FindNodeResult
 	req.Sender=k.SelfContact
 	req.MsgID= NewRandomID()
+	req.NodeID = searchKey
 	err = client.Call("KademliaCore.FindNode", req, &res)
 	if err != nil {
 		log.Fatal("Call: ", err)
 		return "ERR: Not implemented"
 	}else{
-		k.Update(pong.Sender)
+		k.Update(*contact)
 		return "OK: It's good"
 	}
 }
@@ -216,7 +217,35 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	return "ERR: Not implemented"
+	var host = contact.Host
+	var port = contact.Port
+
+	firstPeerStr := host.String()+":"+ strconv.Itoa(int(port))
+	client, err := rpc.DialHTTP("tcp", firstPeerStr)
+	if err != nil {
+		log.Fatal("DialHTTP: ", err)
+		return "ERR: Not implemented"
+	}
+
+	req := new(StoreRequest)
+	req.MsgID = NewRandomID()
+	req.Sender = k.SelfContact
+	req.Key = searchKey
+
+	var res FindValueResult
+	err = client.Call("KademliaCore.Store", req, &res)
+	if err != nil {
+		log.Fatal("Call: ", err)
+		return "ERR: Not implemented"
+	}else{
+		k.Update(*contact)
+		return "OK: It's good"
+	}
+
+
+
+
+
 }
 
 func (k *Kademlia) LocalFindValue(searchKey ID) string {
