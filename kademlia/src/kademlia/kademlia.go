@@ -31,6 +31,7 @@ func NewKademlia(laddr string) *Kademlia {
 	// TODO: Initialize other state here as you add functionality.
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
+	fmt.Println("......")
 
 	// Set up RPC server
 	// NOTE: KademliaCore is just a wrapper around Kademlia. This type includes
@@ -96,13 +97,13 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
     if nodeId == k.SelfContact.NodeID {
         return &k.SelfContact, nil
     }else{
-    	distance :=k.NodeID.Xor(nodeID)
+    	distance :=k.NodeID.Xor(nodeId)
 		entry:=159-distance.PrefixLen()
 		if k.bucket[entry]==nil{
 			return nil, &NotFoundError{nodeId, "Not found"}
 		}else{
 			for e := k.bucket[entry].Front(); e != nil; e = e.Next() {
-				if e.Value.(Contact).NodeID.Compare(nodeID)==0{
+				if e.Value.(Contact).NodeID.Compare(nodeId)==0{
 					return e.Value.(*Contact), nil
 				}
 			}
