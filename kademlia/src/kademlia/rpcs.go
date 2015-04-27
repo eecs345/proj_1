@@ -111,7 +111,7 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 		}
 	}
 	if (len(NodeList) < k){
-		for ; len(NodeList) <=  k || i <= IDBits - 1; i++ {
+		for ; len(NodeList) <=  k && i <= IDBits - 1; i++ {
 			for j := kc.kademlia.Buckets[i].Front(); j != nil; j = j.Next() {
 				var tmp Closest_Node
 				tmp.distance = j.Value.(Contact).NodeID.Xor(req.NodeID)
@@ -125,7 +125,7 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 		//return the contacts
 		for i := 0; i < l; i++ {
 			res.Nodes[i] = CopyContact(NodeList[i].contact)
-		} 
+		}
 	}else{
 		//sort the contacts and return
 		sort.Sort(NodeSlice(NodeList))
@@ -137,13 +137,13 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 	return nil
 }
 
-func (a NodeSlice) Len() int {    // Overwrite  Len() 
+func (a NodeSlice) Len() int {    // Overwrite  Len()
 	return len(a)
 }
-func (a NodeSlice) Swap(i, j int){     // Overwrite  Swap() 
+func (a NodeSlice) Swap(i, j int){     // Overwrite  Swap()
 	a[i], a[j] = a[j], a[i]
 }
-func (a NodeSlice) Less(i, j int) bool {    // Overwrite  Less() 
+func (a NodeSlice) Less(i, j int) bool {    // Overwrite  Less()
 	return a[i].distance.Less(a[j].distance)
 }
 

@@ -23,7 +23,7 @@ const (
 type Kademlia struct {
 	NodeID ID
     SelfContact Contact
-	//Buckets []Bucket 
+	//Buckets []Bucket
 	Buckets []*list.List
 	Storage map[ID][]byte
 }
@@ -115,10 +115,22 @@ func (e *NotFoundError) Error() string {
 func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 	// TODO: Search through contacts, find specified ID
 	// Find contact with provided ID
-    if nodeId == k.SelfContact.NodeID {
-        return &k.SelfContact, nil
-    }
-	return nil, &NotFoundError{nodeId, "Not found"}
+	if nodeId == k.SelfContact.NodeID {
+			return &k.SelfContact, nil
+	}	else{
+		distance :=k.NodeID.Xor(nodeId)
+		entry:=159-distance.PrefixLen()
+	if k.Buckets[entry]==nil{
+		return nil, &NotFoundError{nodeId, "Not found"}
+	}else{
+		for e := k.Buckets[entry].Front(); e != nil; e = e.Next() {
+			if e.Value.(Contact).NodeID.Compare(nodeId)==0{
+				return e.Value.(*Contact), nil
+			}
+		}
+	}
+	}
+return nil, &NotFoundError{nodeId, "Not found"}
 }
 
 // This is the function to perform the RPC
@@ -174,7 +186,7 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	err = client.Call("KademliaCore.Store",request,&result)
 	if (err != nil){
 		log.Fatal("Call:",err)
-		return "ERR: rcp failed " 
+		return "ERR: rcp failed "
 	}else{
 		if (request.MsgID.Equals(result.MsgID)){
 			return "ERR: MsgID does Match"
