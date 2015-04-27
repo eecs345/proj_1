@@ -9,8 +9,8 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-  "strconv"
-  "container/list"
+    "strconv"
+	"container/list"
 )
 
 const (
@@ -23,18 +23,59 @@ const (
 type Kademlia struct {
 	NodeID ID
     SelfContact Contact
-    Bucket []*list.List
-	HashTable map[ID][]byte
+	//Buckets []Bucket 
+	Buckets []*list.List
+	Storage map[ID][]byte
 }
 
 
+func (ka *Kademlia)UpdateBuckets(contact Contact){
+	distance := ka.NodeID.Xor(contact.NodeID)
+	index := distance.PrefixLen()
+	index = 159 - index
+	if (index == -1){
+		fmt.Println("it is myself")
+		return
+	}
+	if (ka.Buckets[index] == nil){
+		ka.Buckets[index] = list.New()
+		ele := ka.Buckets[index].PushBack(contact)
+		fmt.Println(*ele)
+		return
+	}
+	for e := ka.Buckets[index].Front(); e != nil; e = e.Next(){
+		if (e.Value.(Contact).NodeID.Compare(contact.NodeID) == 0){
+			if (ka.Buckets[index].Len() < k){
+				ka.Buckets[index].MoveToBack(e)
+				return
+			}else {
+				// ping and update
+				nodead := ka.Buckets[index].Front().Value.(Contact).Host
+				nodept := ka.Buckets[index].Front().Value.(Contact).Port
+				err := ka.DoPing(nodead, nodept)
+				if string(err[0]) == "O"{
+					ka.Buckets[index].MoveToBack(e)
+				}else {
+					ka.Buckets[index].Remove(e)
+					ka.Buckets[index].PushBack(contact)
+				}
+				return
+			}
+		}
+	}
+	ka.Buckets[index].PushBack(contact)
+	return
+}
+
+//type Bucket *list.List
+
 func NewKademlia(laddr string) *Kademlia {
 	// TODO: Initialize other state here as you add functionality.
-	fmt.Println("hello")
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
-	fmt.Println("....")
-
+	k.Buckets = make([]*list.List, IDBits)
+	k.Storage = make(map[ID][]byte)
+	fmt.Println(k.Buckets[0])
 	// Set up RPC server
 	// NOTE: KademliaCore is just a wrapper around Kademlia. This type includes
 	// the RPC functions.
@@ -58,8 +99,6 @@ func NewKademlia(laddr string) *Kademlia {
             break
         }
     }
-    k.Bucket = make([]*list.List,160)
-		k.HashTable = make(map[ID][]byte)
     k.SelfContact = Contact{k.NodeID, host, uint16(port_int)}
 	return k
 }
@@ -73,63 +112,12 @@ func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("%x %s", e.id, e.msg)
 }
 
-func (k *Kademlia) Update(cc Contact){
-	flag:=0
-	distance :=k.NodeID.Xor(cc.NodeID)
-	entry:=159-distance.PrefixLen()
-	if entry == -1 {
-		fmt.Println("This is myself")
-		return
-	}
-	if k.Bucket[entry]==nil{
-		k.Bucket[entry]=list.New()
-		k.Bucket[entry].PushBack(cc)
-	} else{
-			for e := k.Bucket[entry].Front(); e != nil; e = e.Next() {
-	// do something with e.Value
-				if e.Value.(Contact).NodeID.Compare(cc.NodeID)==0 {
-					k.Bucket[entry].MoveToBack(e)
-					flag=1
-				}
-
-			}
-		if flag==0{
-
-			if k.Bucket[entry].Len()<20 {
-				k.Bucket[entry].PushBack(cc)
-			} else {
-				target := k.Bucket[entry].Front()
-				err :=k.DoPing(target.Value.(Contact).Host, target.Value.(Contact).Port)
-				if err[0] != 'E' {
-					k.Bucket[entry].MoveToBack(target)
-				} else {
-					k.Bucket[entry].Remove(target)
-					k.Bucket[entry].PushBack(cc)
-				}
-			}
-		}
-		}
-}
-
 func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 	// TODO: Search through contacts, find specified ID
 	// Find contact with provided ID
     if nodeId == k.SelfContact.NodeID {
         return &k.SelfContact, nil
-    }	else{
-    	distance :=k.NodeID.Xor(nodeId)
-			entry:=159-distance.PrefixLen()
-		if k.Bucket[entry]==nil{
-			return nil, &NotFoundError{nodeId, "Not found"}
-		}else{
-			for e := k.Bucket[entry].Front(); e != nil; e = e.Next() {
-				if e.Value.(Contact).NodeID.Compare(nodeId)==0{
-					return e.Value.(*Contact), nil
-				}
-			}
-		}
     }
-
 	return nil, &NotFoundError{nodeId, "Not found"}
 }
 
@@ -137,123 +125,81 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-
-	firstPeerStr := host.String()+":"+ strconv.Itoa(int(port))
-	client, err := rpc.DialHTTP("tcp", firstPeerStr)
-	if err != nil {
-		log.Fatal("DialHTTP: ", err)
-		return "ERR: Not implemented"
+	dest := ContactToDest(host,port)
+	client, err := rpc.DialHTTP("tcp", dest)
+	if (err != nil){
+		return "ERR: HTTP Dial failed!"
 	}
+	//ping := new(kademlia.PingMessage)
 	ping := new(PingMessage)
-	ping.MsgID = NewRandomID()
 	ping.Sender = k.SelfContact
+	ping.MsgID = NewRandomID()
 	var pong PongMessage
 	err = client.Call("KademliaCore.Ping", ping, &pong)
 	if err != nil {
 		log.Fatal("Call: ", err)
-		return "ERR: Not implemented"
-	}else{
-		k.Update(pong.Sender)
-		return "OK: It's good"
+		return "ERR: rpc failed!!"
+	}else {
+		if(pong.MsgID.Equals(ping.MsgID)){
+			return "ERR: MsgID does not March!"
+		}
+		k.UpdateBuckets(pong.Sender)
+		return "OK: "
 	}
+}
+
+func ContactToDest(host net.IP, port uint16) string{
+	addr := host.String()
+	portnum := strconv.Itoa(int(port))
+	dest := addr + ":" +portnum
+	return dest
 }
 
 func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	var host = contact.Host
-	var port = contact.Port
-
-	firstPeerStr := host.String()+":"+ strconv.Itoa(int(port))
-	client, err := rpc.DialHTTP("tcp", firstPeerStr)
-	if err != nil {
-		log.Fatal("DialHTTP: ", err)
-		return "ERR: Not implemented"
+	//which node should store this file
+	dest := ContactToDest(contact.Host, contact.Port)
+	client, err := rpc.DialHTTP("tcp", dest)
+	if (err != nil){
+		log.Fatal("Dial:",err)
+		return "ERR: HTTP Dial failed!"
 	}
-
-
-	req := new(StoreRequest)
-	req.MsgID = NewRandomID()
-	req.Sender = k.SelfContact
-	req.Key = key
-	req.Value = value
-
-	var res StoreResult
-	err = client.Call("KademliaCore.Store", req, &res)
-	if err != nil {
-		log.Fatal("Call: ", err)
-		return "ERR: Not implemented"
+	request := new(StoreRequest)
+	request.MsgID = NewRandomID()
+	request.Sender = k.SelfContact
+	request.Key = key
+	request.Value = value
+	var result StoreResult
+	err = client.Call("KademliaCore.Store",request,&result)
+	if (err != nil){
+		log.Fatal("Call:",err)
+		return "ERR: rcp failed " 
 	}else{
-		k.Update(*contact)
-		return "OK: It's good"
+		if (request.MsgID.Equals(result.MsgID)){
+			return "ERR: MsgID does Match"
+		}
+		k.UpdateBuckets(*contact)
+		return "OK:"
 	}
-
+	//return "ERR: Not implemented"
 }
 
 func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	location := contact.Host.String()+":"+ strconv.Itoa(int(contact.Port))
-	client, err := rpc.DialHTTP("tcp", location)
-	if err != nil {
-		log.Fatal("DialHTTP: ", err)
-		return "ERR: Not implemented"
-	}
-	req:=new(FindNodeRequest)
-	var res FindNodeResult
-	req.Sender=k.SelfContact
-	req.MsgID= NewRandomID()
-	req.NodeID = searchKey
-	err = client.Call("KademliaCore.FindNode", req, &res)
-	if err != nil {
-		log.Fatal("Call: ", err)
-		return "ERR: Not implemented"
-	}else{
-		k.Update(*contact)
-		return "OK: It's good"
-	}
+	return "ERR: Not implemented"
 }
 
 func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	var host = contact.Host
-	var port = contact.Port
-
-	firstPeerStr := host.String()+":"+ strconv.Itoa(int(port))
-	client, err := rpc.DialHTTP("tcp", firstPeerStr)
-	if err != nil {
-		log.Fatal("DialHTTP: ", err)
-		return "ERR: Not implemented"
-	}
-
-	req := new(StoreRequest)
-	req.MsgID = NewRandomID()
-	req.Sender = k.SelfContact
-	req.Key = searchKey
-
-	var res FindValueResult
-	err = client.Call("KademliaCore.Store", req, &res)
-	if err != nil {
-		log.Fatal("Call: ", err)
-		return "ERR: Not implemented"
-	}else{
-		k.Update(*contact)
-		return "OK: It's good"
-	}
-
-
-
-
-
+	return "ERR: Not implemented"
 }
 
 func (k *Kademlia) LocalFindValue(searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-
-
-
 	return "ERR: Not implemented"
 }
 

@@ -26,6 +26,13 @@ func (id ID) Xor(other ID) (ret ID) {
 	return
 }
 
+func CopyContact(other Contact) (ret Contact){
+	ret.NodeID = CopyID(other.NodeID)
+	ret.Host = other.Host
+	ret.Port = other.Port
+	return
+}
+
 // Return -1, 0, or 1, with the same meaning as strcmp, etc.
 func (id ID) Compare(other ID) int {
 	for i := 0; i < IDBytes; i++ {
@@ -50,16 +57,17 @@ func (id ID) Less(other ID) bool {
 	return id.Compare(other) < 0
 }
 
-// Return the number of consecutive zeroes in an ID
+// Return the number of consecutive zeroes, starting from the low-order bit, in
+// a ID.
 func (id ID) PrefixLen() int {
-    for i := 0; i < IDBytes; i++ {
-        for j := 7; j >= 0; j-- {
-            if (id[i]>>uint8(j))&0x1 != 0 {
-                return (8 * i) + (7 - j)
-            }
-        }
-    }
-    return IDBytes * 8
+	for i := 0; i < IDBytes; i++ {
+		for j := 0; j < 8; j++ {
+			if (id[i]>>uint8(j))&0x1 != 0 {
+				return (8 * i) + j
+			}
+		}
+	}
+	return IDBytes * 8
 }
 
 // Generate a new ID from nothing.

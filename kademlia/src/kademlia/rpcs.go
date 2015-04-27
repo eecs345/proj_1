@@ -6,7 +6,8 @@ package kademlia
 
 import (
 	"net"
-	"container/list"
+	"fmt"
+	"sort"
 )
 
 type KademliaCore struct {
@@ -35,11 +36,12 @@ type PongMessage struct {
 
 func (kc *KademliaCore) Ping(ping PingMessage, pong *PongMessage) error {
 	// TODO: Finish implementation
+	fmt.Println(ping.MsgID, ping.Sender)
 	pong.MsgID = CopyID(ping.MsgID)
-	pong.Sender = kc.kademlia.SelfContact
-	kc.kademlia.Update(ping.Sender)
     // Specify the sender
+	pong.Sender = kc.kademlia.SelfContact
 	// Update contact, etc
+	kc.kademlia.UpdateBuckets(ping.Sender)
 	return nil
 }
 
@@ -60,11 +62,10 @@ type StoreResult struct {
 
 func (kc *KademliaCore) Store(req StoreRequest, res *StoreResult) error {
 	// TODO: Implement.
-
 	res.MsgID = CopyID(req.MsgID)
-	kc.kademlia.HashTable[req.Key] = req.Value
-	res.Err = nil
-	kc.kademlia.Update(req.Sender)
+	kc.kademlia.Storage[req.Key] = req.Value
+	kc.kademlia.UpdateBuckets(req.Sender)
+	fmt.Println(kc.kademlia.NodeID," : ",kc.kademlia.Storage)
 	return nil
 }
 
@@ -83,27 +84,67 @@ type FindNodeResult struct {
 	Err   error
 }
 
+type Closest_Node struct{
+	distance ID
+	contact Contact
+}
+
+type NodeSlice []Closest_Node
+
 func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error {
 	// TODO: Implement.
-	key:=req.NodeID
-	res.MsgID= CopyID(req.MsgID)
-	kc.kademlia.Update(req.Sender)
-	k:= 20
-	res.Nodes=make([]Contact,k)
-	res.Err=nil
-	distance :=kc.kademlia.NodeID.Xor(key)
-	entry:=159-distance.PrefixLen()
-	i:=entry
-	j:=entry
-	judge:=true
-	
-	temp:=list.new()
-	temp.PushBackList(&kc.kademlia.Bucket[entry])
-	for counter := 0; counter < kc.kademlia.Bucket[entry].Len(); counter++ {
-		res.Nodes[counter]=temp.front().Value.(Contact)
-		temp.MoveToBack(temp.front())
+	res.MsgID = CopyID(req.MsgID)
+	dis := kc.kademlia.NodeID.Xor(req.NodeID)
+	BucketIndex := dis.PrefixLen()
+	BucketIndex = IDBits - 1 - BucketIndex
+	NodeList := make(NodeSlice,0)
+	if BucketIndex != IDBits - 1 {
+		BucketIndex += 1
 	}
+	i := 0
+	for ; i <= BucketIndex; i++ {
+		for j := kc.kademlia.Buckets[i].Front(); j != nil; j = j.Next() {
+			var tmp Closest_Node
+			tmp.distance = j.Value.(Contact).NodeID.Xor(req.NodeID)
+			tmp.contact = CopyContact(j.Value.(Contact))
+			NodeList = append(NodeList, tmp)
+		}
+	}
+	if (len(NodeList) < k){
+		for ; len(NodeList) <=  k || i <= IDBits - 1; i++ {
+			for j := kc.kademlia.Buckets[i].Front(); j != nil; j = j.Next() {
+				var tmp Closest_Node
+				tmp.distance = j.Value.(Contact).NodeID.Xor(req.NodeID)
+				tmp.contact = CopyContact(j.Value.(Contact))
+				NodeList = append(NodeList, tmp)
+			}
+		}
+	}
+	l := len(NodeList)
+	if l <= k {
+		//return the contacts
+		for i := 0; i < l; i++ {
+			res.Nodes[i] = CopyContact(NodeList[i].contact)
+		} 
+	}else{
+		//sort the contacts and return
+		sort.Sort(NodeSlice(NodeList))
+		for i := 0; i < k; i++ {
+			res.Nodes[i] = CopyContact(NodeList[i].contact)
+		}
+	}
+	kc.kademlia.UpdateBuckets(req.Sender)
 	return nil
+}
+
+func (a NodeSlice) Len() int {    // Overwrite  Len() 
+	return len(a)
+}
+func (a NodeSlice) Swap(i, j int){     // Overwrite  Swap() 
+	a[i], a[j] = a[j], a[i]
+}
+func (a NodeSlice) Less(i, j int) bool {    // Overwrite  Less() 
+	return a[i].distance.Less(a[j].distance)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -126,26 +167,5 @@ type FindValueResult struct {
 
 func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) error {
 	// TODO: Implement.
-	res.MsgID = CopyID(req.MsgID)
-	value,ok := kc.kademlia.HashTable[req.Key]
-	if ok == false {
-		req_node:=new(FindNodeRequest)
-		req_node.Sender=req.Sender
-		req_node.MsgID= req.MsgID
-		req_node.NodeID = req.Key
-		var res_node FindNodeResult
-
-		kc.FindNode(*req_node,&res_node)
-		res.Nodes = res_node.Nodes
-	} else {
-		res.Value = value
-	}
-
-
-
-
-
-	res.Err = nil
-	kc.kademlia.Update(req.Sender)
 	return nil
 }
