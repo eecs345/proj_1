@@ -40,7 +40,7 @@ func (ka *Kademlia)UpdateBuckets(contact Contact){
 	if (ka.Buckets[index] == nil){
 		ka.Buckets[index] = list.New()
 		ele := ka.Buckets[index].PushBack(contact)
-		fmt.Println(*ele)
+		fmt.Println((*ele).Value.(Contact).NodeID.AsString())
 		return
 	}
 	for e := ka.Buckets[index].Front(); e != nil; e = e.Next(){
