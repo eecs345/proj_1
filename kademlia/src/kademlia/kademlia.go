@@ -115,7 +115,7 @@ func (e *NotFoundError) Error() string {
 func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 	// TODO: Search through contacts, find specified ID
 	// Find contact with provided ID
-	if nodeId == k.SelfContact.NodeID {
+	if nodeId.Compare(k.SelfContact.NodeID)==0 {
 			return &k.SelfContact, nil
 	}	else{
 		distance :=k.NodeID.Xor(nodeId)
