@@ -21,14 +21,16 @@ const (
 
 // Kademlia type. You can put whatever state you need in this.
 type Kademlia struct {
-	NodeID ID
+		NodeID ID
     SelfContact Contact
-    bucket []*list.List
+    Bucket []*list.List
+		HashTable map[ID][]byte
 }
 
 
 func NewKademlia(laddr string) *Kademlia {
 	// TODO: Initialize other state here as you add functionality.
+	fmt.Println("hello")
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
 	fmt.Println("....")
@@ -56,9 +58,9 @@ func NewKademlia(laddr string) *Kademlia {
             break
         }
     }
-    k.bucket= make([]*list.List,160)
+    k.Bucket = make([]*list.List,160)
+		k.HashTable = make(map[ID][]byte)
     k.SelfContact = Contact{k.NodeID, host, uint16(port_int)}
-		//k.DoPing(k.SelfContact.Host,k.SelfContact.Port)
 	return k
 }
 
@@ -70,6 +72,7 @@ type NotFoundError struct {
 func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("%x %s", e.id, e.msg)
 }
+
 func (k *Kademlia) Update(cc Contact){
 	flag:=0
 	distance :=k.NodeID.Xor(cc.NodeID)
@@ -78,28 +81,30 @@ func (k *Kademlia) Update(cc Contact){
 		fmt.Println("This is myself")
 		return
 	}
-	if k.bucket[entry]==nil{
-		k.bucket[entry]=list.New()
-		k.bucket[entry].PushBack(cc)
+	if k.Bucket[entry]==nil{
+		k.Bucket[entry]=list.New()
+		k.Bucket[entry].PushBack(cc)
 	} else{
-			for e := k.bucket[entry].Front(); e != nil; e = e.Next() {
+			for e := k.Bucket[entry].Front(); e != nil; e = e.Next() {
 	// do something with e.Value
 				if e.Value.(Contact).NodeID.Compare(cc.NodeID)==0 {
-					k.bucket[entry].MoveToBack(e)
+					k.Bucket[entry].MoveToBack(e)
 					flag=1
 				}
+
 			}
 		if flag==0{
-			if k.bucket[entry].Len()<20 {
-				k.bucket[entry].PushBack(cc)
+
+			if k.Bucket[entry].Len()<20 {
+				k.Bucket[entry].PushBack(cc)
 			} else {
-				target := k.bucket[entry].Front()
+				target := k.Bucket[entry].Front()
 				err :=k.DoPing(target.Value.(Contact).Host, target.Value.(Contact).Port)
 				if err[0] != 'E' {
-					k.bucket[entry].MoveToBack(target)
+					k.Bucket[entry].MoveToBack(target)
 				} else {
-					k.bucket[entry].Remove(target)
-					k.bucket[entry].PushBack(cc)
+					k.Bucket[entry].Remove(target)
+					k.Bucket[entry].PushBack(cc)
 				}
 			}
 		}
@@ -114,10 +119,10 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
     }	else{
     	distance :=k.NodeID.Xor(nodeId)
 			entry:=159-distance.PrefixLen()
-		if k.bucket[entry]==nil{
+		if k.Bucket[entry]==nil{
 			return nil, &NotFoundError{nodeId, "Not found"}
 		}else{
-			for e := k.bucket[entry].Front(); e != nil; e = e.Next() {
+			for e := k.Bucket[entry].Front(); e != nil; e = e.Next() {
 				if e.Value.(Contact).NodeID.Compare(nodeId)==0{
 					return e.Value.(*Contact), nil
 				}
@@ -134,7 +139,6 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
 
 	firstPeerStr := host.String()+":"+ strconv.Itoa(int(port))
-	fmt.Println(firstPeerStr)
 	client, err := rpc.DialHTTP("tcp", firstPeerStr)
 	if err != nil {
 		log.Fatal("DialHTTP: ", err)
@@ -157,7 +161,33 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	return "ERR: Not implemented"
+	var host = contact.Host
+	var port = contact.Port
+
+	firstPeerStr := host.String()+":"+ strconv.Itoa(int(port))
+	client, err := rpc.DialHTTP("tcp", firstPeerStr)
+	if err != nil {
+		log.Fatal("DialHTTP: ", err)
+		return "ERR: Not implemented"
+	}
+
+
+	req := new(StoreRequest)
+	req.MsgID = NewRandomID()
+	req.Sender = k.SelfContact
+	req.Key = key
+	req.Value = value
+
+	var res StoreResult
+	err = client.Call("KademliaCore.Store", req, &res)
+	if err != nil {
+		log.Fatal("Call: ", err)
+		return "ERR: Not implemented"
+	}else{
+		k.Update(*contact)
+		return "OK: It's good"
+	}
+
 }
 
 func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
@@ -192,6 +222,9 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 func (k *Kademlia) LocalFindValue(searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
+
+
+
 	return "ERR: Not implemented"
 }
 
