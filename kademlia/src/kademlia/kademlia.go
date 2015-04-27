@@ -9,7 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-    "strconv"
+  "strconv"
 	"container/list"
 )
 
@@ -216,8 +216,13 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 		log.Fatal("Call:",err)
 		return "ERR: rcp failed "
 	}else{
-		if (!request.MsgID.Equals(result.MsgID)) {
+		if !request.MsgID.Equals(result.MsgID) {
 			return "ERR: MsgID does Match"
+		}
+		for i := 0; i < len(result.Nodes); i++ {
+			fmt.Println("Return NodeID : ", result.Nodes[i].NodeID)
+			fmt.Println("       Host : ", result.Nodes[i].Host)
+			fmt.Println("       Port : ", result.Nodes[i].Port)
 		}
 		k.UpdateBuckets(*contact)
 		return "OK:"
@@ -227,7 +232,31 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	return "ERR: Not implemented"
+
+	var host = contact.Host
+	var port = contact.Port
+
+	firstPeerStr := host.String()+":"+ strconv.Itoa(int(port))
+	client, err := rpc.DialHTTP("tcp", firstPeerStr)
+	if err != nil {
+		log.Fatal("DialHTTP: ", err)
+		return "ERR: Not implemented"
+	}
+
+	req := new(StoreRequest)
+	req.MsgID = NewRandomID()
+	req.Sender = k.SelfContact
+	req.Key = searchKey
+
+	var res FindValueResult
+	err = client.Call("KademliaCore.Store", req, &res)
+	if err != nil {
+		log.Fatal("Call: ", err)
+		return "ERR: Not implemented"
+	}else{
+		k.UpdateBuckets(*contact)
+		return "OK: It's good"
+	}
 }
 
 func (k *Kademlia) LocalFindValue(searchKey ID) string {

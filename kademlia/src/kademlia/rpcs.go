@@ -167,5 +167,26 @@ type FindValueResult struct {
 
 func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) error {
 	// TODO: Implement.
+	res.MsgID = CopyID(req.MsgID)
+	value,ok := kc.kademlia.Storage[req.Key]
+	if ok == false {
+		req_node:=new(FindNodeRequest)
+		req_node.Sender=req.Sender
+		req_node.MsgID= req.MsgID
+		req_node.NodeID = req.Key
+		var res_node FindNodeResult
+
+		kc.FindNode(*req_node,&res_node)
+		res.Nodes = res_node.Nodes
+	} else {
+		res.Value = value
+	}
+
+
+
+
+
+	res.Err = nil
+	kc.kademlia.UpdateBuckets(req.Sender)
 	return nil
 }
