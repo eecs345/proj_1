@@ -6,6 +6,7 @@ package kademlia
 
 import (
 	"net"
+	"container/list"
 )
 
 type KademliaCore struct {
@@ -84,6 +85,24 @@ type FindNodeResult struct {
 
 func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error {
 	// TODO: Implement.
+	key:=req.NodeID
+	res.MsgID= CopyID(req.MsgID)
+	kc.kademlia.Update(req.Sender)
+	k:= 20
+	res.Nodes=make([]Contact,k)
+	res.Err=nil
+	distance :=kc.kademlia.NodeID..Xor(key)
+	entry:=159-distance.PrefixLen()
+	i:=entry
+	j:=entry
+	judge:=true
+	
+	temp:=list.new()
+	temp.PushBackList(&kc.kademlia.Bucket[entry])
+	for counter := 0; counter < kc.kademlia.Bucket[entry].Len(); counter++ {
+		res.Nodes[counter]=temp.front().Value.(Contact)
+		temp.MoveToBack(temp.front())
+	}
 	return nil
 }
 
