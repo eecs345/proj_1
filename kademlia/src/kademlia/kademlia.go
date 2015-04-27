@@ -21,10 +21,10 @@ const (
 
 // Kademlia type. You can put whatever state you need in this.
 type Kademlia struct {
-		NodeID ID
+	NodeID ID
     SelfContact Contact
     Bucket []*list.List
-		HashTable map[ID][]byte
+	HashTable map[ID][]byte
 }
 
 
