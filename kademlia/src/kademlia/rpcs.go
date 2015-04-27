@@ -91,7 +91,7 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 	k:= 20
 	res.Nodes=make([]Contact,k)
 	res.Err=nil
-	distance :=kc.kademlia.NodeID..Xor(key)
+	distance :=kc.kademlia.NodeID.Xor(key)
 	entry:=159-distance.PrefixLen()
 	i:=entry
 	j:=entry
