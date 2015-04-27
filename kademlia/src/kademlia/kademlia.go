@@ -254,6 +254,9 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 		log.Fatal("Call: ", err)
 		return "ERR: Not implemented"
 	}else{
+		if(!req.MsgID.Equals(res.MsgID)){
+			return "ERR: MsgID does not Match!"
+		}
 		k.UpdateBuckets(*contact)
 		return "OK: It's good"
 	}

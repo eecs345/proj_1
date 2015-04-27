@@ -171,9 +171,9 @@ func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) er
 	value,ok := kc.kademlia.Storage[req.Key]
 	if ok == false {
 		req_node:=new(FindNodeRequest)
-		req_node.Sender=req.Sender
-		req_node.MsgID= req.MsgID
-		req_node.NodeID = req.Key
+		req_node.Sender=CopyContact(req.Sender)
+		req_node.MsgID=CopyID(req.MsgID)
+		req_node.NodeID = CopyID(req.Key)
 		var res_node FindNodeResult
 
 		kc.FindNode(*req_node,&res_node)
