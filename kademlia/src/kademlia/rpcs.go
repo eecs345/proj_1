@@ -139,7 +139,7 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 		//return the contacts
 		for i := 0; i < l; i++ {
 			res.Nodes = append(res.Nodes, CopyContact(NodeList[i].contact))
-		} 
+		}
 	}else{
 		//sort the contacts and return
 		sort.Sort(NodeSlice(NodeList))
@@ -151,13 +151,13 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 	return nil
 }
 
-func (a NodeSlice) Len() int {    // Overwrite  Len() 
+func (a NodeSlice) Len() int {    // Overwrite  Len()
 	return len(a)
 }
-func (a NodeSlice) Swap(i, j int){     // Overwrite  Swap() 
+func (a NodeSlice) Swap(i, j int){     // Overwrite  Swap()
 	a[i], a[j] = a[j], a[i]
 }
-func (a NodeSlice) Less(i, j int) bool {    // Overwrite  Less() 
+func (a NodeSlice) Less(i, j int) bool {    // Overwrite  Less()
 	return a[i].distance.Less(a[j].distance)
 }
 
@@ -192,12 +192,13 @@ func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) er
 		request.Sender = req.Sender
 		request.NodeID = CopyID(req.Key)
 		var result FindNodeResult
+		fmt.Println("!!!!")
 		err := kc.FindNode(*request, &result)
 		if err != nil{
 			log.Fatal("Find Node : ",err)
 		}
 		for i := 0; i < len(result.Nodes); i++{
-			res.Nodes[i] = result.Nodes[i]
+			res.Nodes= append(res.Nodes,result.Nodes[i])
 		}
 	}
 	return nil
