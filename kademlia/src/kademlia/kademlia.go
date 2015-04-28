@@ -9,8 +9,9 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-  "strconv"
+    "strconv"
 	"container/list"
+	"sync"
 )
 
 const (
@@ -23,9 +24,10 @@ const (
 type Kademlia struct {
 	NodeID ID
     SelfContact Contact
-	//Buckets []Bucket
+	//Buckets []Bucket 
 	Buckets []*list.List
 	Storage map[ID][]byte
+	Lock sync.RWMutex
 }
 
 
@@ -37,33 +39,59 @@ func (ka *Kademlia)UpdateBuckets(contact Contact){
 		fmt.Println("it is myself")
 		return
 	}
+	ka.Lock.Lock()
+	defer ka.Lock.Unlock()
 	if (ka.Buckets[index] == nil){
 		ka.Buckets[index] = list.New()
 		ele := ka.Buckets[index].PushBack(contact)
-		fmt.Println((*ele).Value.(Contact).NodeID.AsString())
+		fmt.Println(ele.Value.(Contact).NodeID.AsString())
 		return
 	}
 	for e := ka.Buckets[index].Front(); e != nil; e = e.Next(){
-		if (e.Value.(Contact).NodeID.Compare(contact.NodeID) == 0){
-			if (ka.Buckets[index].Len() < k){
+		if e.Value.(Contact).NodeID.Compare(contact.NodeID) == 0 {
 				ka.Buckets[index].MoveToBack(e)
 				return
-			}else {
-				// ping and update
-				nodead := ka.Buckets[index].Front().Value.(Contact).Host
-				nodept := ka.Buckets[index].Front().Value.(Contact).Port
-				err := ka.DoPing(nodead, nodept)
-				if string(err[0]) == "O"{
-					ka.Buckets[index].MoveToBack(e)
-				}else {
-					ka.Buckets[index].Remove(e)
-					ka.Buckets[index].PushBack(contact)
-				}
+			}
+	}
+	if ka.Buckets[index].Len() < k {
+		ele := ka.Buckets[index].PushBack(contact)
+		fmt.Println(ele.Value.(Contact).NodeID.AsString())
+		return
+	}else{
+			// ping and update
+			nodead := ka.Buckets[index].Front().Value.(Contact).Host
+			nodept := ka.Buckets[index].Front().Value.(Contact).Port
+			//err := ka.DoPing(nodead, nodept)
+			dest := ContactToDest(nodead, nodept)
+			client, err := rpc.DialHTTP("tcp", dest)
+			if (err != nil){
+				f := ka.Buckets[index].Front()
+				ka.Buckets[index].Remove(f)
+				ka.Buckets[index].PushBack(contact)
 				return
 			}
+			ping := new(PingMessage)
+			ping.Sender = ka.SelfContact
+			ping.MsgID = NewRandomID()
+			var pong PongMessage
+			err = client.Call("KademliaCore.Ping", ping, &pong)
+			if err != nil {
+				f := ka.Buckets[index].Front()
+				ka.Buckets[index].Remove(f)
+				ka.Buckets[index].PushBack(contact)
+				return
+			}else {
+				if !pong.MsgID.Equals(ping.MsgID) {
+					f := ka.Buckets[index].Front()
+					ka.Buckets[index].Remove(f)
+					ka.Buckets[index].PushBack(contact)
+					return
+				}
+				f := ka.Buckets[index].Front()
+				ka.Buckets[index].MoveToBack(f)
+			}
+			return
 		}
-	}
-	ka.Buckets[index].PushBack(contact)
 	return
 }
 
@@ -73,9 +101,9 @@ func NewKademlia(laddr string) *Kademlia {
 	// TODO: Initialize other state here as you add functionality.
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
+	fmt.Println("NodeID : ",k.NodeID.AsString())
 	k.Buckets = make([]*list.List, IDBits)
 	k.Storage = make(map[ID][]byte)
-	fmt.Println(k.Buckets[0])
 	// Set up RPC server
 	// NOTE: KademliaCore is just a wrapper around Kademlia. This type includes
 	// the RPC functions.
@@ -115,24 +143,36 @@ func (e *NotFoundError) Error() string {
 func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 	// TODO: Search through contacts, find specified ID
 	// Find contact with provided ID
-	if nodeId.Compare(k.SelfContact.NodeID)==0 {
-			return &k.SelfContact, nil
-	}	else{
-		distance :=k.NodeID.Xor(nodeId)
-		entry:=159-distance.PrefixLen()
-	if k.Buckets[entry]==nil{
-		return nil, &NotFoundError{nodeId, "Not found"}
-	}else{
-		for e := k.Buckets[entry].Front(); e != nil; e = e.Next() {
-			if e.Value.(Contact).NodeID.Compare(nodeId)==0{
-				newone:=CopyContact(e.Value.(Contact))
-				return &newone, nil
+	if nodeId.Compare(k.SelfContact.NodeID) == 0 {
+		return &k.SelfContact, nil
+	}else {
+		distance := k.NodeID.Xor(nodeId)
+		k.Lock.RLock()
+		defer k.Lock.RUnlock()
+		entry := 159 - distance.PrefixLen()
+		if k.Buckets[entry] == nil{
+			return nil, &NotFoundError{nodeId, "Not found"}
+		}else {
+			for e := k.Buckets[entry].Front(); e != nil; e = e.Next() {
+				if e.Value.(Contact).NodeID.Compare(nodeId) == 0 {
+					tmp := e.Value.(Contact)
+					return &tmp, nil
+				}
 			}
 		}
 	}
-	}
-return nil, &NotFoundError{nodeId, "Not found"}
+	return nil, &NotFoundError{nodeId, "Not found"}
 }
+
+
+//func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
+//	// TODO: Search through contacts, find specified ID
+//	// Find contact with provided ID
+//    if nodeId == k.SelfContact.NodeID {
+//        return &k.SelfContact, nil
+//   }
+//	return nil, &NotFoundError{nodeId, "Not found"}
+//}
 
 // This is the function to perform the RPC
 func (k *Kademlia) DoPing(host net.IP, port uint16) string {
@@ -153,7 +193,7 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 		log.Fatal("Call: ", err)
 		return "ERR: rpc failed!!"
 	}else {
-		if(!pong.MsgID.Equals(ping.MsgID)){
+		if !pong.MsgID.Equals(ping.MsgID) {
 			return "ERR: MsgID does not Match!"
 		}
 		k.UpdateBuckets(pong.Sender)
@@ -187,9 +227,9 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	err = client.Call("KademliaCore.Store",request,&result)
 	if (err != nil){
 		log.Fatal("Call:",err)
-		return "ERR: rcp failed "
+		return "ERR: rcp failed " 
 	}else{
-		if (!request.MsgID.Equals(result.MsgID)){
+		if !request.MsgID.Equals(result.MsgID) {
 			return "ERR: MsgID does Match"
 		}
 		k.UpdateBuckets(*contact)
@@ -212,16 +252,16 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	request.Sender = k.SelfContact
 	request.NodeID = searchKey
 	var result FindNodeResult
-	err = client.Call("KademliaCore.FindNode",request,&result)
+	err = client.Call("KademliaCore.FindNode", request, &result)
 	if (err != nil){
-		log.Fatal("Call:",err)
-		return "ERR: rcp failed "
+		log.Fatal("Call:", err)
+		return "ERR: rcp failed " 
 	}else{
 		if !request.MsgID.Equals(result.MsgID) {
 			return "ERR: MsgID does Match"
 		}
 		for i := 0; i < len(result.Nodes); i++ {
-			fmt.Println("Return NodeID : ", result.Nodes[i].NodeID)
+			fmt.Println("Return NodeID : ", result.Nodes[i].NodeID.AsString())
 			fmt.Println("       Host : ", result.Nodes[i].Host)
 			fmt.Println("       Port : ", result.Nodes[i].Port)
 		}
@@ -233,40 +273,49 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-
-	var host = contact.Host
-	var port = contact.Port
-
-	firstPeerStr := host.String()+":"+ strconv.Itoa(int(port))
-	client, err := rpc.DialHTTP("tcp", firstPeerStr)
-	if err != nil {
-		log.Fatal("DialHTTP: ", err)
-		return "ERR: Not implemented"
+	dest := ContactToDest(contact.Host,contact.Port)
+	client, err := rpc.DialHTTP("tcp", dest)
+	if (err != nil){
+		log.Fatal("Dial:",err)
+		return "ERR: HTTP Dial failed!"
 	}
-
-	req := new(StoreRequest)
-	req.MsgID = NewRandomID()
-	req.Sender = k.SelfContact
-	req.Key = searchKey
-
-	var res FindValueResult
-	err = client.Call("KademliaCore.Store", req, &res)
-	if err != nil {
-		log.Fatal("Call: ", err)
-		return "ERR: Not implemented"
-	}else{
-		if(!req.MsgID.Equals(res.MsgID)){
-			return "ERR: MsgID does not Match!"
+	request := new(FindValueRequest)
+	request.MsgID = NewRandomID()
+	request.Key = CopyID(searchKey)
+	request.Sender = k.SelfContact
+	var result FindValueResult
+	err = client.Call("KademliaCore.FindValue", request, &result)
+	if (err != nil){
+		log.Fatal("Call:", err)
+		return "ERR: rcp failed "
+	}
+		if !request.MsgID.Equals(result.MsgID) {
+			return "ERR: MsgID does Match"
 		}
 		k.UpdateBuckets(*contact)
-		return "OK: It's good"
-	}
+		if result.Value == nil {
+			for i := 0; i < len(result.Nodes); i++ {
+				fmt.Println("Return NodeID : ", result.Nodes[i].NodeID.AsString())
+				fmt.Println("       Host : ", result.Nodes[i].Host)
+				fmt.Println("       Port : ", result.Nodes[i].Port)
+				return "OK : k-Contacts returned!"
+			}
+		}
+	return string(result.Value) 
 }
 
 func (k *Kademlia) LocalFindValue(searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	return "ERR: Not implemented"
+	k.Lock.RLock()
+	defer k.Lock.RUnlock()
+	value, ok := k.Storage[searchKey]
+	if ok {
+		resp := "OK:" + string(value)
+		return resp
+	} else {
+		return "ERR: No Such Key Stored!"
+	}
 }
 
 func (k *Kademlia) DoIterativeFindNode(id ID) string {
