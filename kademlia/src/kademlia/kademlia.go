@@ -125,7 +125,7 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 	}else{
 		for e := k.Buckets[entry].Front(); e != nil; e = e.Next() {
 			if e.Value.(Contact).NodeID.Compare(nodeId)==0{
-				return e.Value.(*Contact), nil
+				return &k.SelfContact, nil
 			}
 		}
 	}
