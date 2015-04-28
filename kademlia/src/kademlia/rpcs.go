@@ -97,26 +97,33 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 	dis := kc.kademlia.NodeID.Xor(req.NodeID)
 	BucketIndex := dis.PrefixLen()
 	BucketIndex = IDBits - 1 - BucketIndex
+	fmt.Println(BucketIndex)
 	NodeList := make(NodeSlice,0)
 	if BucketIndex != IDBits - 1 {
 		BucketIndex += 1
 	}
 	i := 0
 	for ; i <= BucketIndex; i++ {
-		for j := kc.kademlia.Buckets[i].Front(); j != nil; j = j.Next() {
-			var tmp Closest_Node
-			tmp.distance = j.Value.(Contact).NodeID.Xor(req.NodeID)
-			tmp.contact = CopyContact(j.Value.(Contact))
-			NodeList = append(NodeList, tmp)
-		}
-	}
-	if (len(NodeList) < k){
-		for ; len(NodeList) <=  k && i <= IDBits - 1; i++ {
+		fmt.Println(i)
+		if kc.kademlia.Buckets[i] != nil {
 			for j := kc.kademlia.Buckets[i].Front(); j != nil; j = j.Next() {
+				fmt.Println("!!!!!!",j)
 				var tmp Closest_Node
 				tmp.distance = j.Value.(Contact).NodeID.Xor(req.NodeID)
 				tmp.contact = CopyContact(j.Value.(Contact))
 				NodeList = append(NodeList, tmp)
+			}
+		}
+	}
+	if (len(NodeList) < k){
+		for ; len(NodeList) <=  k && i <= IDBits - 1; i++ {
+			if kc.kademlia.Buckets[i] != nil {
+				for j := kc.kademlia.Buckets[i].Front(); j != nil; j = j.Next() {
+					var tmp Closest_Node
+					tmp.distance = j.Value.(Contact).NodeID.Xor(req.NodeID)
+					tmp.contact = CopyContact(j.Value.(Contact))
+					NodeList = append(NodeList, tmp)
+				}
 			}
 		}
 	}
