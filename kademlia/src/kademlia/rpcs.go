@@ -182,10 +182,6 @@ func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) er
 		res.Value = value
 	}
 
-
-
-
-
 	res.Err = nil
 	kc.kademlia.UpdateBuckets(req.Sender)
 	return nil
