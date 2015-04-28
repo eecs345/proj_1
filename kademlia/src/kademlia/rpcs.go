@@ -128,6 +128,12 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 		}
 	}
 	l := len(NodeList)
+	fmt.Println("L=",l)
+	for i := 0; i < l; i++ {
+		fmt.Println("NodeID = ",NodeList[i].contact.NodeID.AsString())
+		fmt.Println("IP = ",NodeList[i].contact.Host)
+		fmt.Println("PortNumber = ", NodeList[i].contact.Port)
+	}
 	if l <= k {
 		//return the contacts
 		for i := 0; i < l; i++ {

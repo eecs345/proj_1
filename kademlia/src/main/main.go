@@ -45,8 +45,8 @@ func main() {
 	if err != nil {
 		log.Fatal("DialHTTP: ", err)
 	}
-
 	ping := new(kademlia.PingMessage)
+	ping.Sender = kadem.SelfContact
 	ping.MsgID = kademlia.NewRandomID()
 	var pong kademlia.PongMessage
 	err = client.Call("KademliaCore.Ping", ping, &pong)
