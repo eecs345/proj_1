@@ -137,13 +137,13 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 	if l <= k {
 		//return the contacts
 		for i := 0; i < l; i++ {
-			res.Nodes[i] = CopyContact(NodeList[i].contact)
+			res.Nodes = append(res.Nodes, CopyContact(NodeList[i].contact))
 		}
 	}else{
 		//sort the contacts and return
 		sort.Sort(NodeSlice(NodeList))
 		for i := 0; i < k; i++ {
-			res.Nodes[i] = CopyContact(NodeList[i].contact)
+			res.Nodes = append(res.Nodes, CopyContact(NodeList[i].contact))
 		}
 	}
 	kc.kademlia.UpdateBuckets(req.Sender)
