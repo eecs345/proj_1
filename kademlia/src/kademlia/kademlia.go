@@ -13,6 +13,8 @@ import (
 	"container/list"
 	"sync"
 	"math"
+	"strings"
+	"encoding/hex"
 )
 
 const (
@@ -317,6 +319,30 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 	} else {
 		return "ERR: No Such Key Stored!"
 	}
+}
+func (k *Kademlia) parseResult(result string)[]Contact
+{
+	con := make([]Contact, 1)
+	if result[0]=="O" {
+		A :=strings.Split(result,"\n")
+		B := strings.Split(A[1],",")
+		var id []byte
+		var NID ID
+		var ip net.IP
+		var port int
+		for index,item := range A {
+			if index>0{
+				B=strings.Split(item,",")
+				id=hex.DecodeString(B[0])
+				NID=CopyID(id)
+				ip=ip.ParseIP(B[1])
+				port, _ = strconv.Atoi(B[2])
+				con=append(con,new(Contact{NID,ip,uint16(port)}))
+			}
+		}
+		
+	}
+	return con
 }
 
 func (k *Kademlia) DoIterativeFindNode(id ID) string {
