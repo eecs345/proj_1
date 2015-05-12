@@ -50,3 +50,16 @@ func TestPing(t *testing.T) {
     }
     return
 }
+
+func TestStore(t *testing.T) {
+  instance1 := NewKademlia("localhost:7890")
+  instance2 := NewKademlia("localhost:7891")
+  contact2, err := instance1.FindContact(instance2.NodeID)
+  if err != nil {
+      t.Error("Instance 2's contact not found in Instance 1's contact list")
+      return
+  }
+  Key := NewRandomID()
+  Value := []byte("Hello world")
+  instance1.DoStore(contact2, Key , Value)
+}
