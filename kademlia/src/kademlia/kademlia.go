@@ -321,23 +321,28 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 	}
 }
 
-func parseResult(result string)[]Contact {
+
+
+func parseResult(result string)[]Contact{
+
 	con := make([]Contact, 1)
-	if result[0]=="O" {
+	if p:= strings.Index(result,"OK");p==0{
 		A :=strings.Split(result,"\n")
 		B := strings.Split(A[1],",")
 		var id []byte
-		var NID ID
 		var ip net.IP
+		var IDd ID
 		var port int
 		for index,item := range A {
 			if index>0{
 				B=strings.Split(item,",")
-				id=hex.DecodeString(B[0])
-				NID=CopyID(id)
-				ip=ip.ParseIP(B[1])
+				id, _ =hex.DecodeString(B[0])
+				for i:=0;i<20;i++ {
+					IDd[i]=id[i]
+				}
+				ip=net.ParseIP(B[1])
 				port, _ = strconv.Atoi(B[2])
-				con=append(con,new(Contact{NID,ip,uint16(port)}))
+				con=append(con,Contact{IDd,ip,uint16(port)})
 			}
 		}
 
