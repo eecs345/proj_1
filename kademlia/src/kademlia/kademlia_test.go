@@ -4,11 +4,9 @@ import (
     "testing"
     "net"
     "strconv"
+    "strings"
 )
 
-
-instance1 := NewKademlia("localhost:7890")
-instance2 := NewKademlia("localhost:7891")
 
 func StringToIpPort(laddr string) (ip net.IP, port uint16, err error){
     hostString, portString, err := net.SplitHostPort(laddr)
@@ -31,8 +29,8 @@ func StringToIpPort(laddr string) (ip net.IP, port uint16, err error){
 }
 
 func TestPing(t *testing.T) {
-    // instance1 := NewKademlia("localhost:7890")
-    // instance2 := NewKademlia("localhost:7891")
+    instance1 := NewKademlia("localhost:7890")
+    instance2 := NewKademlia("localhost:7891")
     host2, port2, _ := StringToIpPort("localhost:7891")
     instance1.DoPing(host2, port2)
     contact2, err := instance1.FindContact(instance2.NodeID)
@@ -55,6 +53,11 @@ func TestPing(t *testing.T) {
 }
 
 func TestStore(t *testing.T) {
+  // test Dostore() function and LocalFindValue() function
+  instance1 := NewKademlia("localhost:7892")
+  instance2 := NewKademlia("localhost:7893")
+  host2, port2, _ := StringToIpPort("localhost:7893")
+  instance1.DoPing(host2, port2)
 
   contact2, err := instance1.FindContact(instance2.NodeID)
   if err != nil {
@@ -63,5 +66,56 @@ func TestStore(t *testing.T) {
   }
   Key := NewRandomID()
   Value := []byte("Hello world")
-  instance1.DoStore(contact2, Key , Value)
+  result := instance1.DoStore(contact2, Key, Value)
+  if p:= strings.Index(result,"ERR");p==0 {
+    t.Error("Can not store this value")
+  }
+  result = instance2.LocalFindValue(Key)
+  if p:= strings.Index(result,"ERR");p==0 {
+    t.Error("Can not find this value")
+  }
+
+  return
 }
+
+func TestFind_Node(t *testing.T) {
+  instance1 := NewKademlia("localhost:7894")
+  instance2 := NewKademlia("localhost:7895")
+  host2, port2, _ := StringToIpPort("localhost:7895")
+  instance1.DoPing(host2, port2)
+
+  contact2, err := instance1.FindContact(instance2.NodeID)
+  if err != nil {
+      t.Error("Instance 2's contact not found in Instance 1's contact list")
+      return
+  }
+  Key := NewRandomID()
+  result := instance1.DoFindNode(contact2, Key)
+  if p:= strings.Index(result,"ERR");p==0 {
+    t.Error("Can not store this value")
+  }
+}
+
+  func TestFind_Value(t *testing.T) {
+    instance1 := NewKademlia("localhost:7896")
+    instance2 := NewKademlia("localhost:7897")
+    host2, port2, _ := StringToIpPort("localhost:7897")
+    instance1.DoPing(host2, port2)
+    contact2, err := instance1.FindContact(instance2.NodeID)
+    if err != nil {
+        t.Error("Instance 2's contact not found in Instance 1's contact list")
+        return
+    }
+
+    Key := NewRandomID()
+    Value := []byte("Hello world")
+    result := instance2.DoStore(contact2, Key, Value)
+    if p:= strings.Index(result,"ERR");p==0 {
+      t.Error("Can not store this value")
+    }
+
+    result = instance1.DoFindValue(contact2, Key)
+    if p:= strings.Index(result,"ERR");p==0 {
+      t.Error("Can not find this value")
+    }
+  }
