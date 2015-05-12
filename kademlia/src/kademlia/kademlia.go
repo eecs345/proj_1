@@ -24,7 +24,7 @@ const (
 type Kademlia struct {
 	NodeID ID
     SelfContact Contact
-	//Buckets []Bucket
+	//Buckets []Bucket 
 	Buckets []*list.List
 	Storage map[ID][]byte
 	Lock sync.RWMutex
@@ -34,7 +34,7 @@ type Kademlia struct {
 func (ka *Kademlia)UpdateBuckets(contact Contact){
 	distance := ka.NodeID.Xor(contact.NodeID)
 	index := distance.PrefixLen()
-	index = IDBits-1 - index
+	index = IDBits - 1 - index
 	if (index == -1){
 		fmt.Println("it is myself")
 		return
@@ -149,7 +149,7 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 		distance := k.NodeID.Xor(nodeId)
 		k.Lock.RLock()
 		defer k.Lock.RUnlock()
-		entry := IDBits-1 - distance.PrefixLen()
+		entry := IDBits - 1 - distance.PrefixLen()
 		if k.Buckets[entry] == nil{
 			return nil, &NotFoundError{nodeId, "Not found"}
 		}else {
@@ -227,7 +227,7 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	err = client.Call("KademliaCore.Store",request,&result)
 	if (err != nil){
 		log.Fatal("Call:",err)
-		return "ERR: rcp failed "
+		return "ERR: rcp failed " 
 	}else{
 		if !request.MsgID.Equals(result.MsgID) {
 			return "ERR: MsgID does Match"
@@ -255,7 +255,7 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	err = client.Call("KademliaCore.FindNode", request, &result)
 	if (err != nil){
 		log.Fatal("Call:", err)
-		return "ERR: rcp failed "
+		return "ERR: rcp failed " 
 	}else{
 		if !request.MsgID.Equals(result.MsgID) {
 			return "ERR: MsgID does Match"
@@ -301,7 +301,7 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 				return "OK : k-Contacts returned!"
 			}
 		}
-	return string(result.Value)
+	return string(result.Value) 
 }
 
 func (k *Kademlia) LocalFindValue(searchKey ID) string {

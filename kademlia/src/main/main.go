@@ -1,3 +1,6 @@
+// Group Member : rya743 yhh325 glj462
+
+
 package main
 
 import (
@@ -41,12 +44,12 @@ func main() {
 	// Your code should loop forever, reading instructions from stdin and
 	// printing their results to stdout. See README.txt for more details.
 	client, err := rpc.DialHTTP("tcp", firstPeerStr)
-	fmt.Println(firstPeerStr)
 	if err != nil {
 		log.Fatal("DialHTTP: ", err)
 	}
+
 	ping := new(kademlia.PingMessage)
-	ping.Sender = kadem.SelfContact
+	ping.Sender = kadem.SelfContact 
 	ping.MsgID = kademlia.NewRandomID()
 	var pong kademlia.PongMessage
 	err = client.Call("KademliaCore.Ping", ping, &pong)
@@ -75,6 +78,7 @@ func main() {
 		}
 	}
 }
+
 
 func executeLine(k *kademlia.Kademlia, line string) (response string) {
 	toks := strings.Fields(line)
