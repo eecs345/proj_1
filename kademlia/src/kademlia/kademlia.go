@@ -9,12 +9,12 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-    "strconv"
+  "strconv"
 	"container/list"
 	"sync"
-	"math"
 	"strings"
 	"encoding/hex"
+	"sort"
 )
 
 const (
@@ -320,8 +320,8 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 		return "ERR: No Such Key Stored!"
 	}
 }
-func (k *Kademlia) parseResult(result string)[]Contact
-{
+
+func parseResult(result string)[]Contact {
 	con := make([]Contact, 1)
 	if result[0]=="O" {
 		A :=strings.Split(result,"\n")
@@ -340,7 +340,7 @@ func (k *Kademlia) parseResult(result string)[]Contact
 				con=append(con,new(Contact{NID,ip,uint16(port)}))
 			}
 		}
-		
+
 	}
 	return con
 }
@@ -375,11 +375,11 @@ type Con struct {
 
 
 func UniqueSlice(slice *Shortlist) {
-    found := make(map[Shortlist]bool)
+    found := make(map[ID]bool)
     total := 0
     for i, val := range *slice {
-        if _, ok := found[val]; !ok {
-            found[val] = true
+        if _, ok := found[val.distance]; !ok {
+            found[val.distance] = true
             (*slice)[total] = (*slice)[i]
             total++
         }
@@ -404,25 +404,25 @@ func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID) str
 		flag := false
 		for {
 			select {
-			 	case contact_string := <-contactlist:
+			 	case contact_string := <-contact_list:
 					counter = counter + 1
-					new_contact := parse_string(contact_string)   // 将string 类型， 转化为 contact slice 类型
+					new_contact := parseResult(contact_string)   // 将string 类型， 转化为 contact slice 类型
 					templist := make(Shortlist,0)
 					if new_contact != nil {
-						for i=new_contact.Front();i!=nil;i=i.Next() {
+						for index,i := range new_contact {
 							var temp Con
-							if (i==new_contact.Front())   //是自身的contact
-							{
+							if (index==0) {  //是自身的contact
 								temp.active = true
 							} else {
 								temp.active = false				//是返回的contact
 							}
 							temp.contact = CopyContact(i)
 							temp.distance = CopyID(id.Xor(i.NodeID))
-							templist.append(templist, temp)
+							templist = append(templist, temp)
 						}
-						closest_distance = (*shortlist)[0].distance
-						(*shortlist).append(*(shortlist), templist)
+
+						closest_distance := (*shortlist)[0].distance
+						(*shortlist) = append(*(shortlist), templist...)
 						// Slice 去重
 						UniqueSlice(shortlist)
 						sort.Sort(Shortlist(*shortlist)) //需要import sort
@@ -430,11 +430,11 @@ func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID) str
 
 
 
-						if ((*shortlist)[0].distance < closest_distance) {
+						if ((*shortlist)[0].distance.Less(closest_distance)) {
 							// closest Node Updated
 							flag = true
 						}
-						if math.Mod(counter,3)==0 {   //使用mod 需要import math
+						if counter==3 {   //使用mod 需要import math
 							// 接受到了3 次
 							break;
 						}
@@ -446,7 +446,7 @@ func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID) str
 
 		// break出来 进行判断处理
 		var num_active = 0
-		for i=(*shorlist).Front();i!=nil;i=i.Next() {
+		for _,i := range *shortlist {
 			if i.active == true {
 				num_active = num_active + 1
 			}
@@ -454,7 +454,7 @@ func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID) str
 
 		if num_active >= 20 {
 			return "Full"
-		} else if flag = true {
+		} else if flag == true {
 			return "Continue"
 		} else {
 			return "Another"
