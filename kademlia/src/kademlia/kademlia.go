@@ -110,8 +110,10 @@ func NewKademlia(laddr string) *Kademlia {
 	// Set up RPC server
 	// NOTE: KademliaCore is just a wrapper around Kademlia. This type includes
 	// the RPC functions.
-	rpc.Register(&KademliaCore{k})
-	rpc.HandleHTTP()
+	s := rpc.NewServer() // Create a new RPC server
+  s.Register(&KademliaCore{k})
+  _, port, _ := net.SplitHostPort(laddr) // extract just the port number
+  s.HandleHTTP(rpc.DefaultRPCPath+port, rpc.DefaultDebugPath+port) // I'm making a unique RPC path for this instance of Kademlia
 	l, err := net.Listen("tcp", laddr)
 	if err != nil {
 		log.Fatal("Listen: ", err)
@@ -181,8 +183,8 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	dest := ContactToDest(host,port)
-	client, err := rpc.DialHTTP("tcp", dest)
+	port_str := strconv.Itoa(int(port))
+	client, err := rpc.DialHTTPPath("tcp", host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
 	if (err != nil){
 		return "ERR: HTTP Dial failed!"
 	}
