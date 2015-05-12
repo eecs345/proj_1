@@ -373,9 +373,6 @@ func (a Shortlist) Less(i, j int) bool {    // Overwrite  Less()
 }
 
 
-
-
-
 func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID) string {
 		counter := 0							// 用一个计数器来判断， 是不是三次都接收完毕了
 		flag := false
@@ -420,9 +417,6 @@ func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID) str
 			}
 
 		}
-
-
-
 
 		// break出来 进行判断处理
 		var num_active = 0
