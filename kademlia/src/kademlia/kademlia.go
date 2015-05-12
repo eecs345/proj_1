@@ -12,6 +12,7 @@ import (
     "strconv"
 	"container/list"
 	"sync"
+	"math"
 )
 
 const (
@@ -24,7 +25,7 @@ const (
 type Kademlia struct {
 	NodeID ID
     SelfContact Contact
-	//Buckets []Bucket 
+	//Buckets []Bucket
 	Buckets []*list.List
 	Storage map[ID][]byte
 	Lock sync.RWMutex
@@ -227,7 +228,7 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	err = client.Call("KademliaCore.Store",request,&result)
 	if (err != nil){
 		log.Fatal("Call:",err)
-		return "ERR: rcp failed " 
+		return "ERR: rcp failed "
 	}else{
 		if !request.MsgID.Equals(result.MsgID) {
 			return "ERR: MsgID does Match"
@@ -255,7 +256,7 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	err = client.Call("KademliaCore.FindNode", request, &result)
 	if (err != nil){
 		log.Fatal("Call:", err)
-		return "ERR: rcp failed " 
+		return "ERR: rcp failed "
 	}else{
 		if !request.MsgID.Equals(result.MsgID) {
 			return "ERR: MsgID does Match"
@@ -301,7 +302,7 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 				return "OK : k-Contacts returned!"
 			}
 		}
-	return string(result.Value) 
+	return string(result.Value)
 }
 
 func (k *Kademlia) LocalFindValue(searchKey ID) string {
@@ -329,4 +330,115 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 func (k *Kademlia) DoIterativeFindValue(key ID) string {
 	// For project 2!
 	return "ERR: Not implemented"
+}
+
+
+
+
+// Yuxuan He's work
+
+
+
+type Shortlist []Con
+
+type Con struct {
+	contact Contact
+	distance  ID
+	active bool
+}
+
+
+func UniqueSlice(slice *Shortlist) {
+    found := make(map[Shortlist]bool)
+    total := 0
+    for i, val := range *slice {
+        if _, ok := found[val]; !ok {
+            found[val] = true
+            (*slice)[total] = (*slice)[i]
+            total++
+        }
+    }
+    *slice = (*slice)[:total]
+}
+
+
+func (a Shortlist) Len() int {    // Overwrite  Len()
+	return len(a)
+}
+func (a Shortlist) Swap(i, j int){     // Overwrite  Swap()
+	a[i], a[j] = a[j], a[i]
+}
+func (a Shortlist) Less(i, j int) bool {    // Overwrite  Less()
+	return a[i].distance.Less(a[j].distance)
+}
+
+
+
+
+
+func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID) string {
+		counter := 0							// 用一个计数器来判断， 是不是三次都接收完毕了
+		flag := false
+		for {
+			select {
+			 	case contact_string := <-contactlist:
+					counter = counter + 1
+					new_contact := parse_string(contact_string)   // 将string 类型， 转化为 contact slice 类型
+					templist := make(Shortlist,0)
+					if new_contact != nil {
+						for i=new_contact.Front();i!=nil;i=i.Next() {
+							var temp Con
+							if (i==new_contact.Front())   //是自身的contact
+							{
+								temp.active = true
+							} else {
+								temp.active = false				//是返回的contact
+							}
+							temp.contact = CopyContact(i)
+							temp.distance = CopyID(id.Xor(i.NodeID))
+							templist.append(templist, temp)
+						}
+						closest_distance = (*shortlist)[0].distance
+						(*shortlist).append(*(shortlist), templist)
+						// Slice 去重
+						UniqueSlice(shortlist)
+						sort.Sort(Shortlist(*shortlist)) //需要import sort
+
+
+
+
+						if ((*shortlist)[0].distance < closest_distance) {
+							// closest Node Updated
+							flag = true
+						}
+						if math.Mod(counter,3)==0 {   //使用mod 需要import math
+							// 接受到了3 次
+							break;
+						}
+
+					}
+			}
+
+		}
+
+
+
+
+		// break出来 进行判断处理
+		var num_active = 0
+		for i=(*shorlist).Front();i!=nil;i=i.Next() {
+			if i.active == true {
+				num_active = num_active + 1
+			}
+		}
+
+		if num_active >= 20 {
+			return "Full"
+		} else if flag = true {
+			return "Continue"
+		} else {
+			return "Another"
+		}
+
+
 }
