@@ -219,6 +219,9 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	//which node should store this file
 	port_str := strconv.Itoa(int(contact.Port))
 	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+
+	// dest := ContactToDest(contact.Host, contact.Port)
+	// client, err := rpc.DialHTTP("tcp", dest)
 	if (err != nil){
 		log.Fatal("Dial:",err)
 		return "ERR: HTTP Dial failed!"
@@ -246,8 +249,10 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	dest := ContactToDest(contact.Host, contact.Port)
-	client, err := rpc.DialHTTP("tcp", dest)
+	// dest := ContactToDest(contact.Host, contact.Port)
+	// client, err := rpc.DialHTTP("tcp", dest)
+	port_str := strconv.Itoa(int(port))
+	client, err := rpc.DialHTTPPath("tcp", host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
 	if (err != nil){
 		log.Fatal("Dial:",err)
 		return "ERR: HTTP Dial failed!"

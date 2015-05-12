@@ -6,8 +6,9 @@ import (
     "strconv"
 )
 
-instance1 := NewKademlia("localhost:7892")
-instance2 := NewKademlia("localhost:7893")
+
+instance1 := NewKademlia("localhost:7890")
+instance2 := NewKademlia("localhost:7891")
 
 func StringToIpPort(laddr string) (ip net.IP, port uint16, err error){
     hostString, portString, err := net.SplitHostPort(laddr)
@@ -54,8 +55,7 @@ func TestPing(t *testing.T) {
 }
 
 func TestStore(t *testing.T) {
-  // instance1 := NewKademlia("localhost:7892")
-  // instance2 := NewKademlia("localhost:7893")
+
   contact2, err := instance1.FindContact(instance2.NodeID)
   if err != nil {
       t.Error("Instance 2's contact not found in Instance 1's contact list")
