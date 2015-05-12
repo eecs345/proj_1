@@ -251,8 +251,8 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
 	// dest := ContactToDest(contact.Host, contact.Port)
 	// client, err := rpc.DialHTTP("tcp", dest)
-	port_str := strconv.Itoa(int(contact.port))
-	client, err := rpc.DialHTTPPath("tcp", contact.host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+	port_str := strconv.Itoa(int(contact.Port))
+	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
 	if (err != nil){
 		log.Fatal("Dial:",err)
 		return "ERR: HTTP Dial failed!"
