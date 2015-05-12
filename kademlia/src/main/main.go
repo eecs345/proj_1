@@ -56,7 +56,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Call: ", err)
 	}
-	kadem.UpdateBuckets(pong, Sender)
+	kadem.UpdateBuckets(pong.Sender)
 	log.Printf("ping msgID: %s\n", ping.MsgID.AsString())
 	log.Printf("pong msgID: %s\n", pong.MsgID.AsString())
 
