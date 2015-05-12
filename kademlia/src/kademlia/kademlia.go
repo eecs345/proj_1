@@ -26,7 +26,7 @@ const (
 // Kademlia type. You can put whatever state you need in this.
 type Kademlia struct {
 	NodeID ID
-    SelfContact Contact
+  SelfContact Contact
 	//Buckets []Bucket
 	Buckets []*list.List
 	Storage map[ID][]byte
@@ -217,8 +217,8 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
 	//which node should store this file
-	dest := ContactToDest(contact.Host, contact.Port)
-	client, err := rpc.DialHTTP("tcp", dest)
+	port_str := strconv.Itoa(int(contact.Port))
+	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
 	if (err != nil){
 		log.Fatal("Dial:",err)
 		return "ERR: HTTP Dial failed!"
