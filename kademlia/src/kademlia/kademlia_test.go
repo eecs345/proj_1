@@ -4,9 +4,10 @@ import (
     "testing"
     "net"
     "strconv"
-    //"strings"
+
     "fmt"
 )
+
 
 
 func StringToIpPort(laddr string) (ip net.IP, port uint16, err error){
@@ -34,8 +35,9 @@ func TestPing(t *testing.T) {
     instance2 := NewKademlia("localhost:7891")
     host2, port2, _ := StringToIpPort("localhost:7891")
     instance1.DoPing(host2, port2)
+    fmt.Println("Normal:"+ instance2.NodeID.AsString())
+    // fmt.Println("ours:" + contact2.NodeID.AsString())
     contact2, err := instance1.FindContact(instance2.NodeID)
-  fmt.Println("!!")
 
     if err != nil {
         t.Error("Instance 2's contact not found in Instance 1's contact list")
@@ -62,7 +64,7 @@ func TestPing(t *testing.T) {
 //   instance2 := NewKademlia("localhost:7893")
 //   host2, port2, _ := StringToIpPort("localhost:7893")
 //   instance1.DoPing(host2, port2)
-//
+
 //   contact2, err := instance1.FindContact(instance2.NodeID)
 //   if err != nil {
 //       t.Error("Instance 2's contact not found in Instance 1's contact list")
@@ -78,16 +80,26 @@ func TestPing(t *testing.T) {
 //   if p:= strings.Index(result,"ERR");p==0 {
 //     t.Error("Can not find this value")
 //   }
+
 //
 //   return
 // }
 //
+
+
+//   return
+// }
+
 // func TestFind_Node(t *testing.T) {
 //   instance1 := NewKademlia("localhost:7894")
 //   instance2 := NewKademlia("localhost:7895")
 //   host2, port2, _ := StringToIpPort("localhost:7895")
 //   instance1.DoPing(host2, port2)
+
 //
+
+
+
 //   contact2, err := instance1.FindContact(instance2.NodeID)
 //   if err != nil {
 //       t.Error("Instance 2's contact not found in Instance 1's contact list")
@@ -99,7 +111,11 @@ func TestPing(t *testing.T) {
 //     t.Error("Can not store this value")
 //   }
 // }
+
 //
+
+
+
 //   func TestFind_Value(t *testing.T) {
 //     instance1 := NewKademlia("localhost:7896")
 //     instance2 := NewKademlia("localhost:7897")
@@ -110,14 +126,22 @@ func TestPing(t *testing.T) {
 //         t.Error("Instance 2's contact not found in Instance 1's contact list")
 //         return
 //     }
+
 //
+
+
+
 //     Key := NewRandomID()
 //     Value := []byte("Hello world")
 //     result := instance2.DoStore(contact2, Key, Value)
 //     if p:= strings.Index(result,"ERR");p==0 {
 //       t.Error("Can not store this value")
 //     }
+
 //
+
+
+
 //     result = instance1.DoFindValue(contact2, Key)
 //     if p:= strings.Index(result,"ERR");p==0 {
 //       t.Error("Can not find this value")
