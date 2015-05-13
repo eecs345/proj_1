@@ -5,6 +5,7 @@ import (
     "net"
     "strconv"
     //"strings"
+    "fmt"
 )
 
 
@@ -34,11 +35,14 @@ func TestPing(t *testing.T) {
     host2, port2, _ := StringToIpPort("localhost:7891")
     instance1.DoPing(host2, port2)
     contact2, err := instance1.FindContact(instance2.NodeID)
+  fmt.Println("!!")
+
     if err != nil {
         t.Error("Instance 2's contact not found in Instance 1's contact list")
         return
     }
     contact1, err := instance2.FindContact(instance1.NodeID)
+
     if err != nil {
         t.Error("Instance 1's contact not found in Instance 2's contact list")
         return

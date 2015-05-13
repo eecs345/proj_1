@@ -193,7 +193,7 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	par:= make([]Contact,1)
 	par=parseResult(str_input)
 	ping := new(PingMessage)
-	// ping.Sender = k.SelfContact
+	//ping.Sender = k.SelfContact
 	ping.Sender=par[0]
 	ping.MsgID = NewRandomID()
 	var pong PongMessage
