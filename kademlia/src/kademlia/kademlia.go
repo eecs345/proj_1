@@ -13,7 +13,7 @@ import (
 	"container/list"
 	"sync"
 	"strings"
-	"encoding/hex"
+	// "encoding/hex"
 	"sort"
 )
 
@@ -334,21 +334,21 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 
 func parseResult(result string)[]Contact{
 
-	con := make([]Contact, 1)
+	con := make([]Contact, 0)
 	if p:= strings.Index(result,"OK");p==0{
 		A :=strings.Split(result,"\n")
 		B := strings.Split(A[1],",")
-		var id []byte
 		var ip net.IP
 		var IDd ID
 		var port int
 		for index,item := range A {
 			if index>0{
 				B=strings.Split(item,",")
-				id, _ =hex.DecodeString(B[0])
-				for i:=0;i<20;i++ {
-					IDd[i]=id[i]
+				for _, it:=range B {
+					fmt.Println(it)
 				}
+
+				IDd, _ =IDFromString(B[0])
 				ip=net.ParseIP(B[1])
 				port, _ = strconv.Atoi(B[2])
 				con=append(con,Contact{IDd,ip,uint16(port)})
