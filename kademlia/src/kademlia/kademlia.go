@@ -188,9 +188,13 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	if (err != nil){
 		return "ERR: HTTP Dial failed!"
 	}
-	//ping := new(kademlia.PingMessage)
+
+	var str_input = "OK\n" + k.SelfContact.NodeID.AsString() +","+ k.SelfContact.Host.String() +","+ strconv.Itoa(int(k.SelfContact.Port))
+	par:= make([]Contact,1)
+	par=parseResult(str_input)
 	ping := new(PingMessage)
-	ping.Sender = k.SelfContact
+	// ping.Sender = k.SelfContact
+	ping.Sender=par[0]
 	ping.MsgID = NewRandomID()
 	var pong PongMessage
 	err = client.Call("KademliaCore.Ping", ping, &pong)
@@ -288,7 +292,7 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 
 	port_str := strconv.Itoa(int(contact.Port))
 	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
-	
+
 	if (err != nil){
 		log.Fatal("Dial:",err)
 		return "ERR: HTTP Dial failed!"
