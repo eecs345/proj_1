@@ -195,7 +195,7 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	var str_output = "OK\n" + par[0].NodeID.AsString() +","+ par[0].Host.String() +","+ strconv.Itoa(int(par[0].Port))
 	fmt.Println(str_output)
 
-	
+
 	ping := new(PingMessage)
 	ping.Sender = k.SelfContact
 	ping.MsgID = NewRandomID()
@@ -413,7 +413,7 @@ func (a Shortlist) Less(i, j int) bool {    // Overwrite  Less()
 }
 
 
-func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID) string {
+func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID,times int) string {
 		counter := 0							// 用一个计数器来判断， 是不是三次都接收完毕了
 		flag := false
 		for {
@@ -448,8 +448,8 @@ func UpdateShortList(contact_list <-chan string, shortlist *Shortlist,id ID) str
 							// closest Node Updated
 							flag = true
 						}
-						if counter==3 {   //使用mod 需要import math
-							// 接受到了3 次
+						if counter==times {   //使用mod 需要import math
+							// 接受到了 times 次
 							break;
 						}
 
