@@ -49,7 +49,7 @@ func main() {
 	}
 
 	ping := new(kademlia.PingMessage)
-	ping.Sender = kadem.SelfContact
+	ping.Sender = kadem.SelfContact 
 	ping.MsgID = kademlia.NewRandomID()
 	var pong kademlia.PongMessage
 	err = client.Call("KademliaCore.Ping", ping, &pong)

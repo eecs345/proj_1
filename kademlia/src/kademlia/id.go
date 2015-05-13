@@ -78,6 +78,14 @@ func NewRandomID() (ret ID) {
 	return
 }
 
+// Generate a Max Distance.
+func MaxID() (ret ID) {
+	for i := 0; i < IDBytes; i++ {
+		ret[i] = uint8(255)
+	}
+	return
+}
+
 // Generate an ID identical to another.
 func CopyID(id ID) (ret ID) {
 	for i := 0; i < IDBytes; i++ {
