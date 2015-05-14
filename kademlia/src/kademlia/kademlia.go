@@ -278,39 +278,7 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	}
 }
 
-func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
-	// TODO: Implement
-	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	dest := ContactToDest(contact.Host, contact.Port)
-	client, err := rpc.DialHTTP("tcp", dest)
-	if err != nil {
-		log.Fatal("Dial:", err)
-		return "ERR: HTTP Dial failed!"
-	}
-	request := new(FindValueRequest)
-	request.MsgID = NewRandomID()
-	request.Key = CopyID(searchKey)
-	request.Sender = k.SelfContact
-	var result FindValueResult
-	err = client.Call("KademliaCore.FindValue", request, &result)
-	if err != nil {
-		log.Fatal("Call:", err)
-		return "ERR: rcp failed "
-	}
-	if !request.MsgID.Equals(result.MsgID) {
-		return "ERR: MsgID does Match"
-	}
-	k.UpdateBuckets(*contact)
-	if result.Value == nil {
-		for i := 0; i < len(result.Nodes); i++ {
-			fmt.Println("Return NodeID : ", result.Nodes[i].NodeID.AsString())
-			fmt.Println("       Host : ", result.Nodes[i].Host)
-			fmt.Println("       Port : ", result.Nodes[i].Port)
-		}
-		return "OK : k-Contacts returned!"
-	}
-	return string(result.Value)
-}
+
 
 func (k *Kademlia) LocalFindValue(searchKey ID) string {
 	// TODO: Implement
@@ -407,7 +375,55 @@ func (k *Kademlia) IterFindNode(id ID, contact Contact, retch chan string) {
 		retch <- res
 	}
 }
+func (k *Kademlia) IterFindValue(id ID, contact Contact, retch chan string){
+	res := k.DoFindValue(&contact, id)
+	if string(res[0]) == "O" {
+		tmp := strings.SplitN(res, "\n", 2)
+		active := contact.NodeID.AsString() + "," + contact.Host.String() + "," + strconv.Itoa(int(contact.Port)) + "\n"
+		ret := tmp[0] + "\n" + active + tmp[1]
+		fmt.Println("the added nodes of one findvalue\n",ret)
+		retch <- ret
+	} else {
+		retch <- res
+	}
+}
+func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
+	// TODO: Implement
+	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
+	dest := ContactToDest(contact.Host, contact.Port)
+	client, err := rpc.DialHTTP("tcp", dest)
+	if err != nil {
+		log.Fatal("Dial:", err)
+		return "ERR: HTTP Dial failed!"
+	}
+	request := new(FindValueRequest)
+	request.MsgID = NewRandomID()
+	request.Key = CopyID(searchKey)
+	request.Sender = k.SelfContact
+	var result FindValueResult
+	err = client.Call("KademliaCore.FindValue", request, &result)
+	if err != nil {
+		log.Fatal("Call:", err)
+		return "ERR: rcp failed "
+	}
+	if !request.MsgID.Equals(result.MsgID) {
+		return "ERR: MsgID does Match"
+	}
+	k.UpdateBuckets(*contact)
 
+	if result.Value == nil {
+		ret := ""
+		for i := 0; i < len(result.Nodes); i++ {
+			k.UpdateBuckets(result.Nodes[i])
+			ret = ret + result.Nodes[i].NodeID.AsString() + "," + result.Nodes[i].Host.String() + "," + strconv.Itoa(int(result.Nodes[i].Port)) + "\n"
+			fmt.Println("Return NodeID : ", result.Nodes[i].NodeID.AsString())
+			fmt.Println("       Host : ", result.Nodes[i].Host)
+			fmt.Println("       Port : ", result.Nodes[i].Port)
+		}
+		return "OK : \n" +ret
+	}
+	return "Perfect:"+ contact.NodeID.AsString()+ "," + string(result.Value)
+}
 func parseResult(result string) []Contact {
 	con := make([]Contact, 0)
 	if p := strings.Index(result, "OK"); p == 0 {
@@ -472,6 +488,9 @@ Loop:
 		select {
 		case contact_string := <-contact_list:
 			fmt.Println("receive string from channel")
+			if string(contact_string[0])=="P"{
+				return contact_string[8:]
+			}
 			counter = counter + 1
 			new_contact := parseResult(contact_string) // 将string 类型， 转化为 contact slice 类型
 			templist := make(Shortlist, 0)
@@ -597,7 +616,52 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 
 	//return "ERR: Not implemented"
 }
+
 func (k *Kademlia) DoIterativeFindValue(key ID) string {
 	// For project 2!
+	test:=k.LocalFindValue(key)
+	if string(test[0])=="O"{
+		res:= k.NodeID.AsString() + " , " + test[3:]
+		return res
+	}
+	var shortlist Shortlist
+	ka.InitShortlist(id, &shortlist)
+	stop := false
+	ch := make(chan string)
+	// While loop
+	for !stop {
+		alphacons := ka.GetCons(&shortlist, alpha)
+		times := len(alphacons)
+		fmt.Println(times," parallel RPCs")
+		for i := 0; i < times; i += 1 {
+			go ka.IterFindValue(id, alphacons[i], ch)
+		}
+		fmt.Println("before update shortlist")
+		// Update shortlist
+		signal := ka.UpdateShortList(ch, &shortlist, id, times)
+
+		//continue or stop
+		fmt.Println(signal)
+			switch signal {
+			case "Full":
+				stop = true
+			case "Another":
+				for signal == "Another"{
+					kcons := ka.GetCons(&shortlist,k)
+					times := len(kcons)
+					for i := 0; i < times; i += 1 {
+						go ka.IterFindNode(id, kcons[i], ch)
+					}
+					signal = ka.UpdateShortList(ch, &shortlist, id, times)
+				}
+				case "Continue":
+			default:
+				return "OK\n"+signal
+		}
+	}
+	ret := ka.CollectFromShortList(shortlist)
+	return "ERR: Can not Find It"
+
+
 	return "ERR: Not implemented"
 }
