@@ -208,6 +208,11 @@ func ContactToDest(host net.IP, port uint16) string {
 	return dest
 }
 
+func ContactToString(contact Contact) string {
+	ret := result.Nodes[i].NodeID.AsString() + "," + result.Nodes[i].Host.String() + "," + strconv.Itoa(int(result.Nodes[i].Port)) + "\n"
+	return ret
+}
+
 func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
@@ -263,7 +268,7 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 		ret := ""
 		for i := 0; i < len(result.Nodes); i++ {
 			k.UpdateBuckets(result.Nodes[i])
-			ret = ret + result.Nodes[i].NodeID.AsString() + "," + result.Nodes[i].Host.String() + "," + strconv.Itoa(int(result.Nodes[i].Port)) + "\n"
+			ret = ret + ContactToString(result.Nodes[i])
 			fmt.Println("Return NodeID : ", result.Nodes[i].NodeID.AsString())
 			fmt.Println("       Host : ", result.Nodes[i].Host)
 			fmt.Println("       Port : ", result.Nodes[i].Port)
@@ -524,37 +529,61 @@ Loop:
 	}
 }
 
-func (k *Kademlia) DoIterativeFindNode(id ID) string {
+func (ka *Kademlia) CollectFromShortlist(shortlist *Shortlist) string{
+	sllen := len(*shortlist)
+	if sllen == 0 {
+		return "Find Nothing!"
+	}
+	ret := ""
+	for count, i := 0, 0; i < sllen && count < k; i += 1 {
+		if (*shortlist)[i].active == true {
+			tmp = (*shortlist)[i].contact
+			ret = ret + ContactToString(tmp)
+			count += 1
+		}
+	}
+	return ret
+}
+
+func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 	// For project 2!
 	// Initialize the shortlist
 	var shortlist Shortlist
-	k.InitShortlist(id, &shortlist)
+	ka.InitShortlist(id, &shortlist)
 	stop := false
 	ch := make(chan string)
 	// While loop
 	for !stop {
-		alphacons := k.GetCons(&shortlist, alpha)
+		alphacons := ka.GetCons(&shortlist, alpha)
 		times := len(alphacons)
 		fmt.Println(times," parallel RPCs")
 		for i := 0; i < times; i += 1 {
-			go k.IterFindNode(id, alphacons[i], ch)
+			go ka.IterFindNode(id, alphacons[i], ch)
 		}
 		fmt.Println("before update shortlist")
 		// Update shortlist
-		signal := k.UpdateShortList(ch, &shortlist, id, times)
+		signal := ka.UpdateShortList(ch, &shortlist, id, times)
 
 		//continue or stop
 		fmt.Println(signal)
-		switch signal {
-		case "Full":
-			stop = true
-		case "Another":
-
-		case "Continue":
+		for signal != "Continue"{
+			switch signal {
+			case "Full":
+				stop = true
+			case "Another":
+				kcons := ka.GetCons(&shortlist,k)
+				times := len(kcons)
+				for i := 0; i < times; i += 1 {
+					go ka.IterFindNode(id, kcons[i], ch)
+				}
+				signal = ka.UpdateShortList(ch, &shortlist, id, times)
+			}
 		}
 	}
-	return "ERR: implemented"
+	ret := ka.CollectFromShortList(shortlist)
+	return "OK: " + ret
 }
+
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	// For project 2!
 	nodes_string := k.DoIterativeFindNode(key)
