@@ -617,11 +617,11 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	//return "ERR: Not implemented"
 }
 
-func (k *Kademlia) DoIterativeFindValue(key ID) string {
+func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 	// For project 2!
-	test:=k.LocalFindValue(key)
+	test:=ka.LocalFindValue(id)
 	if string(test[0])=="O"{
-		res:= k.NodeID.AsString() + " , " + test[3:]
+		res:= ka.NodeID.AsString() + " , " + test[3:]
 		return res
 	}
 	var shortlist Shortlist
@@ -659,8 +659,8 @@ func (k *Kademlia) DoIterativeFindValue(key ID) string {
 				return "OK\n"+signal
 		}
 	}
-	ret := ka.CollectFromShortList(shortlist)
-	return "ERR: Can not Find It"
+	
+	return "ERR: Can not Find It" 
 
 
 	return "ERR: Not implemented"
