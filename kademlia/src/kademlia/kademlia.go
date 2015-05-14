@@ -659,9 +659,9 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 				return "OK\n"+signal
 		}
 	}
-	
-	return "ERR: Can not Find It" 
+
+	return "ERR: Can not Find It"
 
 
-	return "ERR: Not implemented"
+	//return "ERR: Not implemented"
 }

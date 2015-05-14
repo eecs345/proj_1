@@ -2,3 +2,7 @@
 *.a
 
 kademlia/bin/main
+
+kademlia/bin/main
+
+kademlia/pkg/darwin_amd64/kademlia.a
