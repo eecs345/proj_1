@@ -209,7 +209,7 @@ func ContactToDest(host net.IP, port uint16) string {
 }
 
 func ContactToString(contact Contact) string {
-	ret := result.Nodes[i].NodeID.AsString() + "," + result.Nodes[i].Host.String() + "," + strconv.Itoa(int(result.Nodes[i].Port)) + "\n"
+	ret := contact.NodeID.AsString() + "," + contact.Host.String() + "," + strconv.Itoa(int(contact.Port)) + "\n"
 	return ret
 }
 
@@ -556,7 +556,7 @@ func (ka *Kademlia) CollectFromShortlist(shortlist *Shortlist) string{
 	ret := ""
 	for count, i := 0, 0; i < sllen && count < k; i += 1 {
 		if (*shortlist)[i].active == true {
-			tmp = (*shortlist)[i].contact
+			tmp := (*shortlist)[i].contact
 			ret = ret + ContactToString(tmp)
 			count += 1
 		}
@@ -601,7 +601,7 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 				case "Continue":
 		}
 	}
-	ret := ka.CollectFromShortList(shortlist)
+	ret := ka.CollectFromShortlist(&shortlist)
 	return "OK: " + ret
 }
 
