@@ -112,7 +112,7 @@ func NewKademlia(laddr string) *Kademlia {
 	rpc.HandleHTTP()
 	l, err := net.Listen("tcp", laddr)
 	if err != nil {
-		log.Fatal("Listen: ", err)
+		log.Print("Listen: ", err)
 	}
 	// Run RPC server forever.
 	go http.Serve(l, nil)
@@ -190,7 +190,7 @@ func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	var pong PongMessage
 	err = client.Call("KademliaCore.Ping", ping, &pong)
 	if err != nil {
-		log.Fatal("Call: ", err)
+		log.Print("Call: ", err)
 		return "ERR: rpc failed!!"
 	} else {
 		if !pong.MsgID.Equals(ping.MsgID) {
@@ -220,7 +220,7 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	dest := ContactToDest(contact.Host, contact.Port)
 	client, err := rpc.DialHTTP("tcp", dest)
 	if err != nil {
-		log.Fatal("Dial:", err)
+		log.Print("Dial:", err)
 		return "ERR: HTTP Dial failed!"
 	}
 	request := new(StoreRequest)
@@ -231,7 +231,7 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	var result StoreResult
 	err = client.Call("KademliaCore.Store", request, &result)
 	if err != nil {
-		log.Fatal("Call:", err)
+		log.Print("Call:", err)
 		return "ERR: rcp failed "
 	} else {
 		if !request.MsgID.Equals(result.MsgID) {
@@ -249,7 +249,7 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	dest := ContactToDest(contact.Host, contact.Port)
 	client, err := rpc.DialHTTP("tcp", dest)
 	if err != nil {
-		log.Fatal("Dial:", err)
+		log.Print("Dial:", err)
 		return "ERR: HTTP Dial failed!"
 	}
 	request := new(FindNodeRequest)
@@ -259,7 +259,7 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	var result FindNodeResult
 	err = client.Call("KademliaCore.FindNode", request, &result)
 	if err != nil {
-		log.Fatal("Call:", err)
+		log.Print("Call:", err)
 		return "ERR: rcp failed "
 	} else {
 		if !request.MsgID.Equals(result.MsgID) {
@@ -277,8 +277,6 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 		return "OK:\n" + ret
 	}
 }
-
-
 
 func (k *Kademlia) LocalFindValue(searchKey ID) string {
 	// TODO: Implement
@@ -311,7 +309,7 @@ func (k *Kademlia) InitShortlist(id ID, shortlist *Shortlist) {
 		fmt.Println("This is myself!")
 		return
 	}
-	if k.Buckets[index] != nil{
+	if k.Buckets[index] != nil {
 		if k.Buckets[index].Len() >= alpha {
 			for e := k.Buckets[index].Front(); len(*shortlist) < alpha; e = e.Next() {
 				*shortlist = append(*shortlist, Con{e.Value.(Contact), e.Value.(Contact).NodeID.Xor(id), false})
@@ -369,19 +367,19 @@ func (k *Kademlia) IterFindNode(id ID, contact Contact, retch chan string) {
 		tmp := strings.SplitN(res, "\n", 2)
 		active := contact.NodeID.AsString() + "," + contact.Host.String() + "," + strconv.Itoa(int(contact.Port)) + "\n"
 		ret := tmp[0] + "\n" + active + tmp[1]
-		fmt.Println("the result of one findnode\n",ret)
+		fmt.Println("the result of one findnode\n", ret)
 		retch <- ret
 	} else {
 		retch <- res
 	}
 }
-func (k *Kademlia) IterFindValue(id ID, contact Contact, retch chan string){
+func (k *Kademlia) IterFindValue(id ID, contact Contact, retch chan string) {
 	res := k.DoFindValue(&contact, id)
 	if string(res[0]) == "O" {
 		tmp := strings.SplitN(res, "\n", 2)
 		active := contact.NodeID.AsString() + "," + contact.Host.String() + "," + strconv.Itoa(int(contact.Port)) + "\n"
 		ret := tmp[0] + "\n" + active + tmp[1]
-		fmt.Println("the added nodes of one findvalue\n",ret)
+		fmt.Println("the added nodes of one findvalue\n", ret)
 		retch <- ret
 	} else {
 		retch <- res
@@ -393,7 +391,7 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 	dest := ContactToDest(contact.Host, contact.Port)
 	client, err := rpc.DialHTTP("tcp", dest)
 	if err != nil {
-		log.Fatal("Dial:", err)
+		log.Print("Dial:", err)
 		return "ERR: HTTP Dial failed!"
 	}
 	request := new(FindValueRequest)
@@ -403,7 +401,7 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 	var result FindValueResult
 	err = client.Call("KademliaCore.FindValue", request, &result)
 	if err != nil {
-		log.Fatal("Call:", err)
+		log.Print("Call:", err)
 		return "ERR: rcp failed "
 	}
 	if !request.MsgID.Equals(result.MsgID) {
@@ -420,10 +418,11 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 			fmt.Println("       Host : ", result.Nodes[i].Host)
 			fmt.Println("       Port : ", result.Nodes[i].Port)
 		}
-		return "OK : \n" +ret
+		return "OK : \n" + ret
 	}
-	return "Perfect:"+ contact.NodeID.AsString()+ "," + string(result.Value)
+	return "Perfect:" + contact.NodeID.AsString() + "," + string(result.Value)
 }
+
 func parseResult(result string) []Contact {
 	con := make([]Contact, 0)
 	if p := strings.Index(result, "OK"); p == 0 {
@@ -488,7 +487,7 @@ Loop:
 		select {
 		case contact_string := <-contact_list:
 			fmt.Println("receive string from channel")
-			if string(contact_string[0])=="P"{
+			if string(contact_string[0]) == "P" {
 				return contact_string[8:]
 			}
 			counter = counter + 1
@@ -508,8 +507,8 @@ Loop:
 				}
 				if len(*shortlist) == 0 {
 					closest_distance = MaxID()
-					fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\nclosest_distance = ",closest_distance.AsString(),"\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
-				}else{
+					fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\nclosest_distance = ", closest_distance.AsString(), "\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
+				} else {
 					closest_distance = (*shortlist)[0].distance
 				}
 				(*shortlist) = append(*(shortlist), templist...)
@@ -520,12 +519,12 @@ Loop:
 					// closest Node Updated
 					flag = true
 				}
-				fmt.Println("counter = ",counter)
-				if counter == times { //使用mod 需要import math
-					fmt.Println("receive enough data")
-					// 接受到了 times 次
-					break Loop
-				}
+				fmt.Println("counter = ", counter)
+			}
+			if counter == times { //使用mod 需要import math
+				fmt.Println("receive enough data")
+				// 接受到了 times 次
+				break Loop
 			}
 		}
 	}
@@ -548,7 +547,7 @@ Loop:
 	}
 }
 
-func (ka *Kademlia) CollectFromShortlist(shortlist *Shortlist) string{
+func (ka *Kademlia) CollectFromShortlist(shortlist *Shortlist) string {
 	sllen := len(*shortlist)
 	if sllen == 0 {
 		return "Find Nothing!"
@@ -575,7 +574,7 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 	for !stop {
 		alphacons := ka.GetCons(&shortlist, alpha)
 		times := len(alphacons)
-		fmt.Println(times," parallel RPCs")
+		fmt.Println(times, " parallel RPCs")
 		for i := 0; i < times; i += 1 {
 			go ka.IterFindNode(id, alphacons[i], ch)
 		}
@@ -586,19 +585,19 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 		//continue or stop
 		fmt.Println(signal)
 
-			switch signal {
-			case "Full":
-				stop = true
-			case "Another":
-				for signal == "Another"{
-					kcons := ka.GetCons(&shortlist,k)
-					times := len(kcons)
-					for i := 0; i < times; i += 1 {
-						go ka.IterFindNode(id, kcons[i], ch)
-					}
-					signal = ka.UpdateShortList(ch, &shortlist, id, times)
+		switch signal {
+		case "Full":
+			stop = true
+		case "Another":
+			for signal == "Another" {
+				kcons := ka.GetCons(&shortlist, k)
+				times := len(kcons)
+				for i := 0; i < times; i += 1 {
+					go ka.IterFindNode(id, kcons[i], ch)
 				}
-				case "Continue":
+				signal = ka.UpdateShortList(ch, &shortlist, id, times)
+			}
+		case "Continue":
 		}
 	}
 	ret := ka.CollectFromShortlist(&shortlist)
@@ -619,9 +618,9 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 
 func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 	// For project 2!
-	test:=ka.LocalFindValue(id)
-	if string(test[0])=="O"{
-		res:= ka.NodeID.AsString() + " , " + test[3:]
+	test := ka.LocalFindValue(id)
+	if string(test[0]) == "O" {
+		res := ka.NodeID.AsString() + " , " + test[3:]
 		return res
 	}
 	var shortlist Shortlist
@@ -632,7 +631,7 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 	for !stop {
 		alphacons := ka.GetCons(&shortlist, alpha)
 		times := len(alphacons)
-		fmt.Println(times," parallel RPCs")
+		fmt.Println(times, " parallel RPCs")
 		for i := 0; i < times; i += 1 {
 			go ka.IterFindValue(id, alphacons[i], ch)
 		}
@@ -642,26 +641,25 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 
 		//continue or stop
 		fmt.Println(signal)
-			switch signal {
-			case "Full":
-				stop = true
-			case "Another":
-				for signal == "Another"{
-					kcons := ka.GetCons(&shortlist,k)
-					times := len(kcons)
-					for i := 0; i < times; i += 1 {
-						go ka.IterFindNode(id, kcons[i], ch)
-					}
-					signal = ka.UpdateShortList(ch, &shortlist, id, times)
+		switch signal {
+		case "Full":
+			stop = true
+		case "Another":
+			for signal == "Another" {
+				kcons := ka.GetCons(&shortlist, k)
+				times := len(kcons)
+				for i := 0; i < times; i += 1 {
+					go ka.IterFindNode(id, kcons[i], ch)
 				}
-				case "Continue":
-			default:
-				return "OK\n"+signal
+				signal = ka.UpdateShortList(ch, &shortlist, id, times)
+			}
+		case "Continue":
+		default:
+			return "OK\n" + signal
 		}
 	}
 
 	return "ERR: Can not Find It"
 
-
-	//return "ERR: Not implemented"
+	return "ERR: Not implemented"
 }
