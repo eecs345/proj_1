@@ -483,7 +483,7 @@ Loop:
 					templist = append(templist, temp)
 				}
 				if len(*shortlist) == 0 {
-					closest_distance = MaxID() 
+					closest_distance = MaxID()
 					fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\nclosest_distance = ",closest_distance.AsString(),"\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
 				}else{
 					closest_distance = (*shortlist)[0].distance
@@ -557,7 +557,14 @@ func (k *Kademlia) DoIterativeFindNode(id ID) string {
 }
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	// For project 2!
-	return "ERR: Not implemented"
+	nodes_string := k.DoIterativeFindNode(key)
+	contacts := parseResult(nodes_string)
+	for _, i := range contacts {
+		k.DoStore(&i, key, value)
+	}
+	return contacts[len(contacts)-1].NodeID.AsString()
+
+	//return "ERR: Not implemented"
 }
 func (k *Kademlia) DoIterativeFindValue(key ID) string {
 	// For project 2!
