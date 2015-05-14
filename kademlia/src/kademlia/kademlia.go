@@ -566,18 +566,20 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 
 		//continue or stop
 		fmt.Println(signal)
-		for signal != "Continue"{
+
 			switch signal {
 			case "Full":
 				stop = true
 			case "Another":
-				kcons := ka.GetCons(&shortlist,k)
-				times := len(kcons)
-				for i := 0; i < times; i += 1 {
-					go ka.IterFindNode(id, kcons[i], ch)
+				for signal == "Another"{
+					kcons := ka.GetCons(&shortlist,k)
+					times := len(kcons)
+					for i := 0; i < times; i += 1 {
+						go ka.IterFindNode(id, kcons[i], ch)
+					}
+					signal = ka.UpdateShortList(ch, &shortlist, id, times)
 				}
-				signal = ka.UpdateShortList(ch, &shortlist, id, times)
-			}
+				case "Continue":
 		}
 	}
 	ret := ka.CollectFromShortList(shortlist)
