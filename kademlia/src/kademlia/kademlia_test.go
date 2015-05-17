@@ -69,6 +69,7 @@ func TestStore(t *testing.T) {
     t.Error("Can not store this value")
   }
   result = instance2.LocalFindValue(Key)
+  //using LocalFindValue to verification the result of DoStore()
   t.Logf(result)
   //show the result of "DoStore"
   if p:= strings.Index(result,"ERR");p==0 {
@@ -80,6 +81,13 @@ func TestStore(t *testing.T) {
 func TestFind_Node(t *testing.T) {
   // tree structure;
   // A->B->tree
+  /*
+         C
+      /
+  A-B -- D
+      \
+         E
+*/
   instance1 := NewKademlia("localhost:7894")
   instance2 := NewKademlia("localhost:7895")
   host2, port2, _ := StringToIpPort("localhost:7895")
@@ -97,19 +105,26 @@ func TestFind_Node(t *testing.T) {
       host_number, port_number, _ := StringToIpPort(address)
       instance2.DoPing(host_number, port_number)
   }
-
-
   Key := NewRandomID()
   result := instance1.DoFindNode(contact2, Key)
   t.Logf(result)
+  //return k nodes
   if p:= strings.Index(result,"ERR");p==0 {
     t.Error("Can not find this value")
   }
   return
 }
 
-
 func TestFind_Value(t *testing.T) {
+  // tree structure;
+  // A->B->tree
+  /*
+         C
+      /
+  A-B -- D
+      \
+         E
+*/
   instance1 := NewKademlia("localhost:7926")
   instance2 := NewKademlia("localhost:7927")
   host2, port2, _ := StringToIpPort("localhost:7927")
@@ -134,15 +149,91 @@ func TestFind_Value(t *testing.T) {
   if p:= strings.Index(result_store,"ERR");p==0 {
     t.Error("Can not store this value")
   }
-  t.Logf(result_store)
+  // Given the right keyID
   result_find := instance1.DoFindValue(contact2, Key)
+  t.Logf(result_find)
   if p:= strings.Index(result_find,"ERR");p==0 {
     t.Error("Can not find this value")
   }
+
+  //Given the wrong keyID
+  Key_wrong := NewRandomID()
+  result_find = instance1.DoFindValue(contact2, Key_wrong)
   t.Logf(result_find)
-  if (result_store != result_find) {
-    t.Error("Find the wrong value")
+  if p:= strings.Index(result_find,"ERR");p==0 {
+    t.Error("Can not find this value")
   }
+}
 
+func TestIterativeFindNode(t *testing.T) {
+  // using line structure;
+  /*
+    A->B->C->D->E->F->G
+  */
+  line_node := make([]*Kademlia, 30)
+  line_node[0] = NewKademlia("localhost:7959")
+  for i := 1; i < 30; i++ {
+      address := "localhost:"+strconv.Itoa(7960+i)
+      line_node[i] = NewKademlia(address)
+      host_number, port_number, _ := StringToIpPort(address)
+      line_node[i-1].DoPing(host_number, port_number)
+  }
+  key := NewRandomID()
+  result := line_node[0].DoIterativeFindNode(key)
+  if p:= strings.Index(result,"OK");p!=0 {
+    t.Error("Can't find Node")
+  }
+  t.Logf(result)
+}
 
+func TestIterativeStore(t *testing.T) {
+  // using line structure;
+  /*
+    A->B->C->D->E->F->G
+  */
+  line_node := make([]*Kademlia, 30)
+  line_node[0] = NewKademlia("localhost:7990")
+  for i := 1; i < 30; i++ {
+      address := "localhost:"+strconv.Itoa(7991+i)
+      line_node[i] = NewKademlia(address)
+      host_number, port_number, _ := StringToIpPort(address)
+      line_node[i-1].DoPing(host_number, port_number)
+  }
+  Key := NewRandomID()
+  Value := []byte("Hello world")
+  result := line_node[0].DoIterativeStore(Key,Value)
+  if p:= strings.Index(result,"OK");p!=0 {
+    t.Error("Can't store value")
+  }
+  t.Logf(result)
+  for i := 1; i < 30; i++ {
+      result = line_node[i].LocalFindValue(Key)
+      t.Logf(result)
+  }
+}
+
+func TestIterativeFindValue(t *testing.T) {
+  // using line structure;
+  /*
+    A->B->C->D->E->F->G
+  */
+  line_node := make([]*Kademlia, 30)
+  line_node[0] = NewKademlia("localhost:8030")
+  for i := 1; i < 30; i++ {
+      address := "localhost:"+strconv.Itoa(8031+i)
+      line_node[i] = NewKademlia(address)
+      host_number, port_number, _ := StringToIpPort(address)
+      line_node[i-1].DoPing(host_number, port_number)
+  }
+  contact, err := line_node[3].FindContact(line_node[4].NodeID)
+  if err != nil {
+      t.Error("Instance 29's contact not found in Instance 28's contact list")
+      return
+  }
+  Key := NewRandomID()
+  Value := []byte("Hello world")
+  result := line_node[4].DoStore(contact, Key, Value)
+  t.Logf(result)
+  result = line_node[0].DoIterativeFindValue(Key)
+  t.Logf(result)
 }

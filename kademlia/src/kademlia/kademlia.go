@@ -240,7 +240,7 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 			return "ERR: MsgID does Match"
 		}
 		k.UpdateBuckets(*contact)
-		return "OK:"+string(request.Value)
+		return "OK: "+string(request.Value)
 	}
 	//return "ERR: Not implemented"
 }
@@ -287,7 +287,7 @@ func (k *Kademlia) LocalFindValue(searchKey ID) string {
 	defer k.Lock.RUnlock()
 	value, ok := k.Storage[searchKey]
 	if ok {
-		resp := "OK:" + string(value)
+		resp := "OK: " + string(value)
 		return resp
 	} else {
 		return "ERR: No Such Key Stored!"
@@ -422,7 +422,7 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 		}
 		return "OK : \n" + ret
 	}
-	return "Perfect:" + contact.NodeID.AsString() + "," + string(result.Value)
+	return "Perfect:" + contact.NodeID.AsString() + "," + string(result.Value[3:])
 }
 
 func parseResult(result string) []Contact {
@@ -601,17 +601,19 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 	ret := ka.CollectFromShortlist(&shortlist)
 	return "OK: " + ret
 }
-	func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
-	// For project 2!
+
+func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
+// For project 2!
 	nodes_string := k.DoIterativeFindNode(key)
 	contacts := parseResult(nodes_string)
 	for _, i := range contacts {
 		k.DoStore(&i, key, value)
 	}
-	return contacts[len(contacts)-1].NodeID.AsString()
-	//return "ERR: Not implemented"
+	return "OK: "+ contacts[len(contacts)-1].NodeID.AsString()
+//return "ERR: Not implemented"
 }
-	func (ka *Kademlia) DoIterativeFindValue(id ID) string {
+
+func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 	// For project 2!
 	test := ka.LocalFindValue(id)
 	if string(test[0]) == "O" {
@@ -634,7 +636,7 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 		// Update shortlist
 		signal := ka.UpdateShortList(ch, &shortlist, id, times)
 		//continue or stop
-		// fmt.Println(signal)
+		fmt.Println(signal)
 		switch signal {
 		case "Full":
 			stop = true
@@ -649,7 +651,8 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 			}
 		case "Continue":
 		default:
-			return "OK\n" + signal
+			ka.DoStore(&shortlist[0].contact, id, []byte(signal[42:]))
+			return "OK: " + signal
 		}
 	}
 	return "ERR: Can not Find It"
