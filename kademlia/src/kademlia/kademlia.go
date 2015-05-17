@@ -614,7 +614,6 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 		k.DoStore(&i, key, value)
 	}
 	return contacts[len(contacts)-1].NodeID.AsString()
-
 	//return "ERR: Not implemented"
 }
 
