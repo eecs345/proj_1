@@ -548,7 +548,6 @@ Loop:
 		return "Another"
 	}
 }
-
 func (ka *Kademlia) CollectFromShortlist(shortlist *Shortlist) string {
 	sllen := len(*shortlist)
 	if sllen == 0 {
@@ -564,7 +563,6 @@ func (ka *Kademlia) CollectFromShortlist(shortlist *Shortlist) string {
 	}
 	return ret
 }
-
 func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 	// For project 2!
 	// Initialize the shortlist
@@ -583,10 +581,8 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 		fmt.Println("before update shortlist")
 		// Update shortlist
 		signal := ka.UpdateShortList(ch, &shortlist, id, times)
-
 		//continue or stop
 		fmt.Println(signal)
-
 		switch signal {
 		case "Full":
 			stop = true
@@ -605,8 +601,7 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 	ret := ka.CollectFromShortlist(&shortlist)
 	return "OK: " + ret
 }
-
-func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
+	func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	// For project 2!
 	nodes_string := k.DoIterativeFindNode(key)
 	contacts := parseResult(nodes_string)
@@ -616,8 +611,7 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	return contacts[len(contacts)-1].NodeID.AsString()
 	//return "ERR: Not implemented"
 }
-
-func (ka *Kademlia) DoIterativeFindValue(id ID) string {
+	func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 	// For project 2!
 	test := ka.LocalFindValue(id)
 	if string(test[0]) == "O" {
@@ -639,7 +633,6 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 		fmt.Println("before update shortlist")
 		// Update shortlist
 		signal := ka.UpdateShortList(ch, &shortlist, id, times)
-
 		//continue or stop
 		fmt.Println(signal)
 		switch signal {
@@ -659,8 +652,5 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 			return "OK\n" + signal
 		}
 	}
-
 	return "ERR: Can not Find It"
-
-	return "ERR: Not implemented"
 }
