@@ -63,7 +63,7 @@ func TestStore(t *testing.T) {
       return
   }
   Key := NewRandomID()
-  Value := []byte("The content of Store")
+  Value := []byte("Hello World")
   result := instance1.DoStore(contact2, Key, Value)
   if p:= strings.Index(result,"ERR");p==0 {
     t.Error("Can not store this value")
@@ -97,6 +97,8 @@ func TestFind_Node(t *testing.T) {
       host_number, port_number, _ := StringToIpPort(address)
       instance2.DoPing(host_number, port_number)
   }
+
+
   Key := NewRandomID()
   result := instance1.DoFindNode(contact2, Key)
   t.Logf(result)
@@ -108,23 +110,39 @@ func TestFind_Node(t *testing.T) {
 
 
 func TestFind_Value(t *testing.T) {
-  instance1 := NewKademlia("localhost:7896")
-  instance2 := NewKademlia("localhost:7897")
-  host2, port2, _ := StringToIpPort("localhost:7897")
+  instance1 := NewKademlia("localhost:7926")
+  instance2 := NewKademlia("localhost:7927")
+  host2, port2, _ := StringToIpPort("localhost:7927")
   instance1.DoPing(host2, port2)
   contact2, err := instance1.FindContact(instance2.NodeID)
   if err != nil {
       t.Error("Instance 2's contact not found in Instance 1's contact list")
       return
   }
+
+  tree_node := make([]*Kademlia, 30)
+  for i := 0; i < 30; i++ {
+      address := "localhost:"+strconv.Itoa(7928+i)
+      tree_node[i] = NewKademlia(address)
+      host_number, port_number, _ := StringToIpPort(address)
+      instance2.DoPing(host_number, port_number)
+  }
+
   Key := NewRandomID()
   Value := []byte("Hello world")
-  result := instance2.DoStore(contact2, Key, Value)
-  if p:= strings.Index(result,"ERR");p==0 {
+  result_store := instance2.DoStore(contact2, Key, Value)
+  if p:= strings.Index(result_store,"ERR");p==0 {
     t.Error("Can not store this value")
   }
-  result = instance1.DoFindValue(contact2, Key)
-  if p:= strings.Index(result,"ERR");p==0 {
+  t.Logf(result_store)
+  result_find := instance1.DoFindValue(contact2, Key)
+  if p:= strings.Index(result_find,"ERR");p==0 {
     t.Error("Can not find this value")
   }
+  t.Logf(result_find)
+  if (result_store != result_find) {
+    t.Error("Find the wrong value")
+  }
+
+
 }

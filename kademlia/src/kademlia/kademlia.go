@@ -240,7 +240,7 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 			return "ERR: MsgID does Match"
 		}
 		k.UpdateBuckets(*contact)
-		return "OK:"
+		return "OK:"+string(request.Value)
 	}
 	//return "ERR: Not implemented"
 }
