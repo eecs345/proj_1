@@ -655,6 +655,7 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 			}
 		case "Continue":
 		default:
+			ka.DoStore(&shortlist[0].contact, id, []byte(signal[42:]))
 			return "OK\n" + signal
 		}
 	}
