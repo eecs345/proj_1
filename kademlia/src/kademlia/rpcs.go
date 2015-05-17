@@ -6,7 +6,7 @@ package kademlia
 
 import (
 	"net"
-	"fmt"
+	//"fmt"
 	"sort"
 	"log"
 )
@@ -68,7 +68,7 @@ func (kc *KademliaCore) Store(req StoreRequest, res *StoreResult) error {
 	kc.kademlia.Storage[req.Key] = req.Value
 	kc.kademlia.Lock.Unlock()
 	kc.kademlia.UpdateBuckets(req.Sender)
-	fmt.Println(kc.kademlia.NodeID.AsString()," : ",kc.kademlia.Storage)
+	// fmt.Println(kc.kademlia.NodeID.AsString()," : ",kc.kademlia.Storage)
 	kc.kademlia.UpdateBuckets(req.Sender)
 	return nil
 }
@@ -139,25 +139,26 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 		//return the contacts
 		for i := 0; i < l; i++ {
 			res.Nodes = append(res.Nodes, CopyContact(NodeList[i].contact))
-		} 
+		}
 	}else{
 		//sort the contacts and return
 		sort.Sort(NodeSlice(NodeList))
 		for i := 0; i < k; i++ {
-			res.Nodes[i] = CopyContact(NodeList[i].contact)
+			// res.Nodes[i] = CopyContact(NodeList[i].contact)
+			res.Nodes = append(res.Nodes, CopyContact(NodeList[i].contact))
 		}
 	}
 	kc.kademlia.UpdateBuckets(req.Sender)
 	return nil
 }
 
-func (a NodeSlice) Len() int {    // Overwrite  Len() 
+func (a NodeSlice) Len() int {    // Overwrite  Len()
 	return len(a)
 }
-func (a NodeSlice) Swap(i, j int){     // Overwrite  Swap() 
+func (a NodeSlice) Swap(i, j int){     // Overwrite  Swap()
 	a[i], a[j] = a[j], a[i]
 }
-func (a NodeSlice) Less(i, j int) bool {    // Overwrite  Less() 
+func (a NodeSlice) Less(i, j int) bool {    // Overwrite  Less()
 	return a[i].distance.Less(a[j].distance)
 }
 
