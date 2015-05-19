@@ -149,14 +149,14 @@ func TestFind_Value(t *testing.T) {
   if p:= strings.Index(result_store,"ERR");p==0 {
     t.Error("Can not store this value")
   }
-  // Given the right keyID
+  // Given the right keyID, it should return the value
   result_find := instance1.DoFindValue(contact2, Key)
   t.Logf(result_find)
   if p:= strings.Index(result_find,"ERR");p==0 {
     t.Error("Can not find this value")
   }
 
-  //Given the wrong keyID
+  //Given the wrong keyID, it should return k nodes.
   Key_wrong := NewRandomID()
   result_find = instance1.DoFindValue(contact2, Key_wrong)
   t.Logf(result_find)
@@ -206,10 +206,6 @@ func TestIterativeStore(t *testing.T) {
     t.Error("Can't store value")
   }
   t.Logf(result)
-  for i := 1; i < 30; i++ {
-      result = line_node[i].LocalFindValue(Key)
-      t.Logf(result)
-  }
 }
 
 func TestIterativeFindValue(t *testing.T) {
@@ -217,23 +213,32 @@ func TestIterativeFindValue(t *testing.T) {
   /*
     A->B->C->D->E->F->G
   */
-  line_node := make([]*Kademlia, 30)
+  line_node := make([]*Kademlia, 80)
   line_node[0] = NewKademlia("localhost:8030")
-  for i := 1; i < 30; i++ {
+  for i := 1; i < 20; i++ {
       address := "localhost:"+strconv.Itoa(8031+i)
       line_node[i] = NewKademlia(address)
       host_number, port_number, _ := StringToIpPort(address)
       line_node[i-1].DoPing(host_number, port_number)
   }
-  contact, err := line_node[3].FindContact(line_node[4].NodeID)
+  contact, err := line_node[18].FindContact(line_node[19].NodeID)
   if err != nil {
       t.Error("Instance 29's contact not found in Instance 28's contact list")
       return
   }
   Key := NewRandomID()
   Value := []byte("Hello world")
-  result := line_node[4].DoStore(contact, Key, Value)
-  t.Logf(result)
+
+  result := line_node[19].DoStore(contact,Key, Value)
+  if p:= strings.Index(result,"OK");p!=0 {
+    t.Error("Can't store value at the end of line")
+  }
   result = line_node[0].DoIterativeFindValue(Key)
-  t.Logf(result)
+  if p:= strings.Index(result,"OK");p!=0 {
+    t.Error("Can't iterative find value")
+  }
+
+  //test if the key was wrong
+   :=
+
 }

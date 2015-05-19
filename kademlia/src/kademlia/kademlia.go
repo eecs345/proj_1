@@ -479,6 +479,7 @@ func (a Shortlist) Less(i, j int) bool { // Overwrite  Less()
 func (k *Kademlia) UpdateShortList(contact_list <-chan string, shortlist *Shortlist, id ID, times int) string {
 	counter := 0 // 用一个计数器来判断， 是不是三次都接收完毕了
 	flag := false
+	fmt.Println(times)
 	if times == 0 {
 		return "Full"
 	}
@@ -490,7 +491,7 @@ Loop:
 		case contact_string := <-contact_list:
 			// fmt.Println("receive string from channel")
 			if string(contact_string[0]) == "P" {
-				return contact_string[8:]
+				return "OK :"+contact_string[8:]
 			}
 			counter = counter + 1
 			new_contact := parseResult(contact_string) // 将string 类型， 转化为 contact slice 类型
@@ -519,6 +520,7 @@ Loop:
 				sort.Sort(Shortlist(*shortlist)) //需要import sort
 				if (*shortlist)[0].distance.Less(closest_distance) {
 					// closest Node Updated
+					closest_distance = (*shortlist)[0].distance
 					flag = true
 				}
 				// fmt.Println("counter = ", counter)
@@ -637,6 +639,10 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 		signal := ka.UpdateShortList(ch, &shortlist, id, times)
 		//continue or stop
 		fmt.Println(signal)
+		fmt.Println(len(shortlist))
+		for _,item := range shortlist {
+			fmt.Println(item.active)
+			}
 		switch signal {
 		case "Full":
 			stop = true
@@ -645,14 +651,24 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 				kcons := ka.GetCons(&shortlist, k)
 				times := len(kcons)
 				for i := 0; i < times; i += 1 {
-					go ka.IterFindNode(id, kcons[i], ch)
+					go ka.IterFindValue(id, kcons[i], ch)
 				}
 				signal = ka.UpdateShortList(ch, &shortlist, id, times)
+				if string(signal[0]) == "O" {
+					ka.DoStore(&(shortlist[0].contact), id, []byte(signal[46:]))
+					return signal
+				}
+				fmt.Println(signal)
+				for _,item1 := range shortlist {
+					fmt.Println(item1.active)
+					}
 			}
 		case "Continue":
 		default:
-			ka.DoStore(&shortlist[0].contact, id, []byte(signal[42:]))
-			return "OK: " + signal
+			fmt.Println("!!!!!!!!!!!!!")
+			ka.DoStore(&(shortlist[0].contact), id, []byte(signal[42:]))
+			//fmt.Println(shortlist.contact)
+			return "OK :" + signal
 		}
 	}
 	return "ERR: Can not Find It"
