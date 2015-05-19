@@ -479,7 +479,7 @@ func (a Shortlist) Less(i, j int) bool { // Overwrite  Less()
 func (k *Kademlia) UpdateShortList(contact_list <-chan string, shortlist *Shortlist, id ID, times int) string {
 	counter := 0 // 用一个计数器来判断， 是不是三次都接收完毕了
 	flag := false
-	fmt.Println(times)
+	// fmt.Println(times)
 	if times == 0 {
 		return "Full"
 	}
@@ -638,11 +638,11 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 		// Update shortlist
 		signal := ka.UpdateShortList(ch, &shortlist, id, times)
 		//continue or stop
-		fmt.Println(signal)
-		fmt.Println(len(shortlist))
-		for _,item := range shortlist {
-			fmt.Println(item.active)
-			}
+		// fmt.Println(signal)
+		// fmt.Println(len(shortlist))
+		// for _,item := range shortlist {
+		// 	fmt.Println(item.active)
+		// 	}
 		switch signal {
 		case "Full":
 			stop = true
@@ -658,17 +658,17 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 					ka.DoStore(&(shortlist[0].contact), id, []byte(signal[46:]))
 					return signal
 				}
-				fmt.Println(signal)
-				for _,item1 := range shortlist {
-					fmt.Println(item1.active)
-					}
+				// fmt.Println(signal)
+				// for _,item1 := range shortlist {
+				// 	fmt.Println(item1.active)
+				// 	}
 			}
 		case "Continue":
 		default:
-			fmt.Println("!!!!!!!!!!!!!")
-			ka.DoStore(&(shortlist[0].contact), id, []byte(signal[42:]))
+			// fmt.Println("!!!!!!!!!!!!!")
+			//ka.DoStore(&(shortlist[0].contact), id, []byte(signal[42:]))
 			//fmt.Println(shortlist.contact)
-			return "OK :" + signal
+			return signal
 		}
 	}
 	return "ERR: Can not Find It"

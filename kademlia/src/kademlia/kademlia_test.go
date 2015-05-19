@@ -229,6 +229,7 @@ func TestIterativeFindValue(t *testing.T) {
   Key := NewRandomID()
   Value := []byte("Hello world")
 
+  // given the right key
   result := line_node[19].DoStore(contact,Key, Value)
   if p:= strings.Index(result,"OK");p!=0 {
     t.Error("Can't store value at the end of line")
@@ -237,8 +238,31 @@ func TestIterativeFindValue(t *testing.T) {
   if p:= strings.Index(result,"OK");p!=0 {
     t.Error("Can't iterative find value")
   }
-
+  t.Logf(result)
   //test if the key was wrong
-   :=
+  Key_wrong := NewRandomID()
+  result = line_node[0].DoIterativeFindValue(Key_wrong)
+  if p:= strings.Index(result,"OK");p==0 {
+    t.Error("The key was wrong, it should not return OK")
+  }
+
+
+  //if there is only two node in this network
+  first_node := NewKademlia("localhost:8130")
+  second_node := NewKademlia("localhost:8131")
+  address_second := "localhost:"+strconv.Itoa(8131)
+  host_number_second, port_number_second, _ := StringToIpPort(address_second)
+  first_node.DoPing(host_number_second, port_number_second)
+  contact_second_node, err := first_node.FindContact(second_node.NodeID)
+  if err != nil {
+      t.Error("the first node and the second node are not connected")
+      return
+  }
+  first_node.DoStore(contact_second_node, Key, Value)
+  result = first_node.DoIterativeFindValue(Key)
+  if p:= strings.Index(result,"OK");p!=0 {
+    t.Error("Can't iterative find value")
+  }
+  t.Logf(result)
 
 }
