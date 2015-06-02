@@ -283,6 +283,21 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 		}
 		response = k.DoIterativeFindValue(key)
 
+	case toks[0] == "vanish":
+		// performa an iterative find value
+		if len(toks) != 5 {
+			response = "usage: vanish [VDO ID] [data] [numberKeys] [threshold]"
+			return
+		}
+		
+	case toks[0] == "unvanish":
+		// performa an iterative find value
+		if len(toks) != 3 {
+			response = "usage: unvanish [Node ID] [VDO ID]"
+			return
+		}
+		// response = UnvanishData()
+
 	default:
 		response = "ERR: Unknown command"
 	}

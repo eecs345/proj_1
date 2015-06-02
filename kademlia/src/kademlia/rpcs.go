@@ -203,3 +203,34 @@ func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) er
 	}
 	return nil
 }
+
+//proj 3
+
+
+///////////////////////////////////////////////////////////////
+////  FIND_VDO
+///////////////////////////////////////////////////////////////
+
+type GetVDORequest struct {
+    Sender Contact
+    MsgID ID
+    VdoID ID
+}
+
+type GetVDOResult struct{
+	Sender Contact
+    MsgID ID
+    VDO VanashingDataObject
+}
+
+func (kc *KademliaCore) GetVDO(req GetVDORequest, res *GetVDOResult) error {
+	res.MsgID = CopyID(req.MsgID)
+	ok,vdo := kc.kademlia.LocalFindVDO(req.VdoID)
+	if !ok {
+		return &MyError{"No VDO with such ID"}
+	}
+	res.VDO = vdo
+	res.Sender = kc.kademlia.SelfContact
+	kc.kademlia.UpdateBuckets(req.Sender)
+    return nil
+}

@@ -29,6 +29,7 @@ type Kademlia struct {
 	//Buckets []Bucket
 	Buckets []*list.List
 	Storage map[ID][]byte
+	VDOs 	map[ID]VanashingDataObject
 	Lock    sync.RWMutex
 }
 
@@ -105,6 +106,7 @@ func NewKademlia(laddr string) *Kademlia {
 	// fmt.Println("NodeID : ", k.NodeID.AsString())
 	k.Buckets = make([]*list.List, IDBits)
 	k.Storage = make(map[ID][]byte)
+	k.VDOs = make(map[ID]VanashingDataObject)
 	// Set up RPC server
 	// NOTE: KademliaCore is just a wrapper around Kademlia. This type includes
 	// the RPC functions.
@@ -672,4 +674,79 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 		}
 	}
 	return "ERR: Can not Find It"
+}
+
+
+///////////////proj3
+func (k *Kademlia) Vanish(VDOID ID, data []byte, N byte, T byte) string {
+	vdodata := VanishData(*k, data, N, T)
+	e := k.Storevdo(VDOID,vdodata)
+	if e != nil{
+		log.Fatal(e)
+		return "ERR: Cannot store VDO"
+	}
+	return "OK: VDO has stored with key " + VDOID.AsString()
+}
+
+func (k *Kademlia) Unvanish(NodeID ID, VDOID ID) string {
+	c, e := k.FindContact(NodeID)
+	if e != nil {
+		return "ERR: Not a valid NodeID!"
+	}
+	var vdo VanashingDataObject
+	err := k.DoGetVDO(c.Host, c.Port, VDOID, vdo)
+	if err != nil {
+		log.Print(err)
+		return "ERR: Cannot get VDO object!"
+	}
+	data := UnvanishData(*k, vdo)
+	return "OK: " + string(data)
+}
+
+func(k *Kademlia) DoGetVDO(host net.IP, port uint16, VDOID ID, vdo VanashingDataObject) error {
+	dest := ContactToDest(host, port)
+	client, err := rpc.DialHTTP("tcp",dest)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+	req := new(GetVDORequest)
+	req.MsgID = NewRandomID()
+	req.Sender = k.SelfContact
+	req.VdoID = VDOID
+	var res GetVDOResult
+	err = client.Call("KademliaCore.GetVDO", req, &res)
+	if err != nil{
+		log.Print("Call: ", err)
+		return err
+	}
+	if !res.MsgID.Equals(req.MsgID) {
+		log.Print("MessageID not match")
+		return &MyError{"MsgID not Match"}
+	}
+	k.UpdateBuckets(res.Sender)
+	vdo = res.VDO
+	return nil
+}
+
+type MyError struct{
+	what string
+}
+
+func (e *MyError) Error() string {
+	return fmt.Sprintf("%s",e.what)
+}
+
+func (k *Kademlia) Storevdo(VID ID, vdo VanashingDataObject) error {
+	k.Lock.Lock()
+	k.VDOs[VID] = vdo
+	k.Lock.Unlock()
+	return nil
+}
+
+func (k *Kademlia) LocalFindVDO(VdoID ID) (bool, VanashingDataObject) {
+	k.Lock.RLock()
+	defer k.Lock.RUnlock()
+	vdo, ok := k.VDOs[VdoID]
+	return ok,vdo
 }
