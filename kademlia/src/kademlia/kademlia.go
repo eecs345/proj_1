@@ -110,8 +110,14 @@ func NewKademlia(laddr string) *Kademlia {
 	// Set up RPC server
 	// NOTE: KademliaCore is just a wrapper around Kademlia. This type includes
 	// the RPC functions.
-	rpc.Register(&KademliaCore{k})
-	rpc.HandleHTTP()
+
+	// rpc.Register(&KademliaCore{k})
+	// rpc.HandleHTTP()
+	s := rpc.NewServer() // Create a new RPC server
+  s.Register(&KademliaCore{k})
+  _, port, _ := net.SplitHostPort(laddr) // extract just the port number
+  s.HandleHTTP(rpc.DefaultRPCPath+port, rpc.DefaultDebugPath+port) // I'm making a unique RPC path for this instance of Kademlia
+
 	l, err := net.Listen("tcp", laddr)
 	if err != nil {
 		log.Print("Listen: ", err)
@@ -180,8 +186,13 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	dest := ContactToDest(host, port)
-	client, err := rpc.DialHTTP("tcp", dest)
+
+	// dest := ContactToDest(host, port)
+	// client, err := rpc.DialHTTP("tcp", dest)
+
+	port_str := strconv.Itoa(int(port))
+	client, err := rpc.DialHTTPPath("tcp", host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+
 	if err != nil {
 		return "ERR: HTTP Dial failed!"
 	}
@@ -219,8 +230,12 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
 	//which node should store this file
-	dest := ContactToDest(contact.Host, contact.Port)
-	client, err := rpc.DialHTTP("tcp", dest)
+
+	// dest := ContactToDest(contact.Host, contact.Port)
+	// client, err := rpc.DialHTTP("tcp", dest)
+	port_str := strconv.Itoa(int(contact.Port))
+	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+
 	if err != nil {
 		log.Print("Dial:", err)
 		return "ERR: HTTP Dial failed!"
@@ -248,8 +263,12 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	dest := ContactToDest(contact.Host, contact.Port)
-	client, err := rpc.DialHTTP("tcp", dest)
+	// dest := ContactToDest(contact.Host, contact.Port)
+	// client, err := rpc.DialHTTP("tcp", dest)
+
+	port_str := strconv.Itoa(int(contact.Port))
+	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+
 	if err != nil {
 		log.Print("Dial:", err)
 		return "ERR: HTTP Dial failed!"
@@ -390,8 +409,11 @@ func (k *Kademlia) IterFindValue(id ID, contact Contact, retch chan string) {
 func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	dest := ContactToDest(contact.Host, contact.Port)
-	client, err := rpc.DialHTTP("tcp", dest)
+	// dest := ContactToDest(contact.Host, contact.Port)
+	// client, err := rpc.DialHTTP("tcp", dest)
+	port_str := strconv.Itoa(int(contact.Port))
+	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+
 	if err != nil {
 		log.Print("Dial:", err)
 		return "ERR: HTTP Dial failed!"
@@ -614,7 +636,7 @@ func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
 	for _, i := range contacts {
 		k.DoStore(&i, key, value)
 	}
-	return contacts[len(contacts)-1].NodeID.AsString()
+	return "OK: "+contacts[len(contacts)-1].NodeID.AsString()
 
 	//return "ERR: Not implemented"
 }
@@ -652,7 +674,7 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 				kcons := ka.GetCons(&shortlist, k)
 				times := len(kcons)
 				for i := 0; i < times; i += 1 {
-					go ka.IterFindNode(id, kcons[i], ch)
+					go ka.IterFindValue(id, kcons[i], ch)
 				}
 				signal = ka.UpdateShortList(ch, &shortlist, id, times)
 				if string(signal[0]) == "O"{
@@ -667,8 +689,6 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 	}
 
 	return "ERR: Can not Find It"
-
-	return "ERR: Not implemented"
 }
 
 
@@ -703,10 +723,11 @@ func (k *Kademlia) Unvanish(NodeID ID, VDOID ID) string {
 }
 
 func(k *Kademlia) DoGetVDO(host net.IP, port uint16, VDOID ID, vdo *VanashingDataObject) error {
-	// port_str := strconv.Itoa(int(port))
-	// client, err := rpc.DialHTTPPath("tcp", host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
-	dest := ContactToDest(host, port)
-	client, err := rpc.DialHTTP("tcp", dest)
+	// dest := ContactToDest(host, port)
+	// client, err := rpc.DialHTTP("tcp", dest)
+	port_str := strconv.Itoa(int(port))
+	client, err := rpc.DialHTTPPath("tcp", host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+
 
 	if err != nil {
 		log.Print(err)
