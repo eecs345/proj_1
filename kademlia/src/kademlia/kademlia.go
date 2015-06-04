@@ -38,15 +38,15 @@ func (ka *Kademlia) UpdateBuckets(contact Contact) {
 	index := distance.PrefixLen()
 	index = IDBits - 1 - index
 	if index == -1 {
-		// fmt.Println("it is myself")
+		fmt.Println("it is myself")
 		return
 	}
 	ka.Lock.Lock()
 	defer ka.Lock.Unlock()
 	if ka.Buckets[index] == nil {
 		ka.Buckets[index] = list.New()
-		ka.Buckets[index].PushBack(contact)
-		// fmt.Println(ele.Value.(Contact).NodeID.AsString())
+		ele := ka.Buckets[index].PushBack(contact)
+		fmt.Println(ele.Value.(Contact).NodeID.AsString())
 		return
 	}
 	for e := ka.Buckets[index].Front(); e != nil; e = e.Next() {
@@ -56,8 +56,8 @@ func (ka *Kademlia) UpdateBuckets(contact Contact) {
 		}
 	}
 	if ka.Buckets[index].Len() < k {
-		ka.Buckets[index].PushBack(contact)
-		// fmt.Println(ele.Value.(Contact).NodeID.AsString())
+		ele := ka.Buckets[index].PushBack(contact)
+		fmt.Println(ele.Value.(Contact).NodeID.AsString())
 		return
 	} else {
 		// ping and update
@@ -103,17 +103,15 @@ func NewKademlia(laddr string) *Kademlia {
 	// TODO: Initialize other state here as you add functionality.
 	k := new(Kademlia)
 	k.NodeID = NewRandomID()
-	// fmt.Println("NodeID : ", k.NodeID.AsString())
+	k.VDOs = make(map[ID]VanashingDataObject)
+	fmt.Println("NodeID : ", k.NodeID.AsString())
 	k.Buckets = make([]*list.List, IDBits)
 	k.Storage = make(map[ID][]byte)
-	k.VDOs = make(map[ID]VanashingDataObject)
 	// Set up RPC server
 	// NOTE: KademliaCore is just a wrapper around Kademlia. This type includes
 	// the RPC functions.
-	s := rpc.NewServer() // Create a new RPC server
-  s.Register(&KademliaCore{k})
-  _, port, _ := net.SplitHostPort(laddr) // extract just the port number
-  s.HandleHTTP(rpc.DefaultRPCPath+port, rpc.DefaultDebugPath+port) // I'm making a unique RPC path for this instance of Kademlia
+	rpc.Register(&KademliaCore{k})
+	rpc.HandleHTTP()
 	l, err := net.Listen("tcp", laddr)
 	if err != nil {
 		log.Print("Listen: ", err)
@@ -182,8 +180,8 @@ func (k *Kademlia) FindContact(nodeId ID) (*Contact, error) {
 func (k *Kademlia) DoPing(host net.IP, port uint16) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	port_str := strconv.Itoa(int(port))
-	client, err := rpc.DialHTTPPath("tcp", host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+	dest := ContactToDest(host, port)
+	client, err := rpc.DialHTTP("tcp", dest)
 	if err != nil {
 		return "ERR: HTTP Dial failed!"
 	}
@@ -221,8 +219,8 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
 	//which node should store this file
-	port_str := strconv.Itoa(int(contact.Port))
-	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+	dest := ContactToDest(contact.Host, contact.Port)
+	client, err := rpc.DialHTTP("tcp", dest)
 	if err != nil {
 		log.Print("Dial:", err)
 		return "ERR: HTTP Dial failed!"
@@ -243,15 +241,15 @@ func (k *Kademlia) DoStore(contact *Contact, key ID, value []byte) string {
 		}
 		k.UpdateBuckets(*contact)
 		return "OK: "+string(request.Value)
-	}
+		}
 	//return "ERR: Not implemented"
 }
 
 func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	port_str := strconv.Itoa(int(contact.Port))
-	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+	dest := ContactToDest(contact.Host, contact.Port)
+	client, err := rpc.DialHTTP("tcp", dest)
 	if err != nil {
 		log.Print("Dial:", err)
 		return "ERR: HTTP Dial failed!"
@@ -273,9 +271,9 @@ func (k *Kademlia) DoFindNode(contact *Contact, searchKey ID) string {
 		for i := 0; i < len(result.Nodes); i++ {
 			k.UpdateBuckets(result.Nodes[i])
 			ret = ret + ContactToString(result.Nodes[i])
-			// fmt.Println("Return NodeID : ", result.Nodes[i].NodeID.AsString())
-			// fmt.Println("       Host : ", result.Nodes[i].Host)
-			// fmt.Println("       Port : ", result.Nodes[i].Port)
+			fmt.Println("Return NodeID : ", result.Nodes[i].NodeID.AsString())
+			fmt.Println("       Host : ", result.Nodes[i].Host)
+			fmt.Println("       Port : ", result.Nodes[i].Port)
 		}
 		k.UpdateBuckets(*contact)
 		return "OK:\n" + ret
@@ -310,7 +308,7 @@ func (k *Kademlia) InitShortlist(id ID, shortlist *Shortlist) {
 	index := distance.PrefixLen()
 	index = IDBits - 1 - index
 	if index == -1 {
-		// fmt.Println("This is myself!")
+		fmt.Println("This is myself!")
 		return
 	}
 	if k.Buckets[index] != nil {
@@ -321,18 +319,18 @@ func (k *Kademlia) InitShortlist(id ID, shortlist *Shortlist) {
 			return
 		}
 	}
-	// fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	for i := index; len(*shortlist) < alpha && i >= 0; i -= 1 {
 		if k.Buckets[i] != nil {
-			// fmt.Println(k.Buckets[i])
-			// fmt.Println("length of shortlist = ", len(*shortlist))
+			fmt.Println(k.Buckets[i])
+			fmt.Println("length of shortlist = ", len(*shortlist))
 			for e := k.Buckets[i].Front(); len(*shortlist) < alpha && e != nil; e = e.Next() {
 				*shortlist = append(*shortlist, Con{e.Value.(Contact), e.Value.(Contact).NodeID.Xor(id), false})
 			}
-			// fmt.Println(*shortlist)
+			fmt.Println(*shortlist)
 		}
 	}
-	// fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 	if len(*shortlist) < alpha {
 		for i := index; len(*shortlist) < alpha && i < IDBits; i += 1 {
 			if k.Buckets[i] != nil {
@@ -371,7 +369,7 @@ func (k *Kademlia) IterFindNode(id ID, contact Contact, retch chan string) {
 		tmp := strings.SplitN(res, "\n", 2)
 		active := contact.NodeID.AsString() + "," + contact.Host.String() + "," + strconv.Itoa(int(contact.Port)) + "\n"
 		ret := tmp[0] + "\n" + active + tmp[1]
-		// fmt.Println("the result of one findnode\n", ret)
+		fmt.Println("the result of one findnode\n", ret)
 		retch <- ret
 	} else {
 		retch <- res
@@ -383,7 +381,7 @@ func (k *Kademlia) IterFindValue(id ID, contact Contact, retch chan string) {
 		tmp := strings.SplitN(res, "\n", 2)
 		active := contact.NodeID.AsString() + "," + contact.Host.String() + "," + strconv.Itoa(int(contact.Port)) + "\n"
 		ret := tmp[0] + "\n" + active + tmp[1]
-		// fmt.Println("the added nodes of one findvalue\n", ret)
+		fmt.Println("the added nodes of one findvalue\n", ret)
 		retch <- ret
 	} else {
 		retch <- res
@@ -392,8 +390,8 @@ func (k *Kademlia) IterFindValue(id ID, contact Contact, retch chan string) {
 func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 	// TODO: Implement
 	// If all goes well, return "OK: <output>", otherwise print "ERR: <messsage>"
-	port_str := strconv.Itoa(int(contact.Port))
-	client, err := rpc.DialHTTPPath("tcp", contact.Host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
+	dest := ContactToDest(contact.Host, contact.Port)
+	client, err := rpc.DialHTTP("tcp", dest)
 	if err != nil {
 		log.Print("Dial:", err)
 		return "ERR: HTTP Dial failed!"
@@ -418,9 +416,9 @@ func (k *Kademlia) DoFindValue(contact *Contact, searchKey ID) string {
 		for i := 0; i < len(result.Nodes); i++ {
 			k.UpdateBuckets(result.Nodes[i])
 			ret = ret + result.Nodes[i].NodeID.AsString() + "," + result.Nodes[i].Host.String() + "," + strconv.Itoa(int(result.Nodes[i].Port)) + "\n"
-			// fmt.Println("Return NodeID : ", result.Nodes[i].NodeID.AsString())
-			// fmt.Println("       Host : ", result.Nodes[i].Host)
-			// fmt.Println("       Port : ", result.Nodes[i].Port)
+			fmt.Println("Return NodeID : ", result.Nodes[i].NodeID.AsString())
+			fmt.Println("       Host : ", result.Nodes[i].Host)
+			fmt.Println("       Port : ", result.Nodes[i].Port)
 		}
 		return "OK : \n" + ret
 	}
@@ -439,9 +437,9 @@ func parseResult(result string) []Contact {
 			if index != len(A)-1 {
 				if index > 0 {
 					B = strings.Split(item, ",")
-					// for _, it := range B {
-					// 	fmt.Println(it)
-					// }
+					for _, it := range B {
+						fmt.Println(it)
+					}
 					IDd, _ = IDFromString(B[0])
 					ip = net.ParseIP(B[1])
 					port, _ = strconv.Atoi(B[2])
@@ -481,17 +479,16 @@ func (a Shortlist) Less(i, j int) bool { // Overwrite  Less()
 func (k *Kademlia) UpdateShortList(contact_list <-chan string, shortlist *Shortlist, id ID, times int) string {
 	counter := 0 // 用一个计数器来判断， 是不是三次都接收完毕了
 	flag := false
-	// fmt.Println(times)
 	if times == 0 {
 		return "Full"
 	}
 	var closest_distance ID
-	// fmt.Println("enter updateshortlist")
+	fmt.Println("enter updateshortlist")
 Loop:
 	for {
 		select {
 		case contact_string := <-contact_list:
-			// fmt.Println("receive string from channel")
+			fmt.Println("receive string from channel")
 			if string(contact_string[0]) == "P" {
 				return "OK :"+contact_string[8:]
 			}
@@ -512,7 +509,7 @@ Loop:
 				}
 				if len(*shortlist) == 0 {
 					closest_distance = MaxID()
-					// fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\nclosest_distance = ", closest_distance.AsString(), "\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
+					fmt.Println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\nclosest_distance = ", closest_distance.AsString(), "\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
 				} else {
 					closest_distance = (*shortlist)[0].distance
 				}
@@ -525,25 +522,25 @@ Loop:
 					closest_distance = (*shortlist)[0].distance
 					flag = true
 				}
-				// fmt.Println("counter = ", counter)
+				fmt.Println("counter = ", counter)
 			}
 			if counter == times { //使用mod 需要import math
-				// fmt.Println("receive enough data")
+				fmt.Println("receive enough data")
 				// 接受到了 times 次
 				break Loop
 			}
 		}
 	}
-	// fmt.Println("out for loop")
+	fmt.Println("out for loop")
 	// break出来 进行判断处理
 	var num_active = 0
 	for _, i := range *shortlist {
-		// fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+		fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 		if i.active == true {
 			num_active = num_active + 1
 		}
 	}
-	// fmt.Println("updateshorlist out")
+	fmt.Println("updateshorlist out")
 	if num_active >= 20 {
 		return "Full"
 	} else if flag == true {
@@ -552,6 +549,7 @@ Loop:
 		return "Another"
 	}
 }
+
 func (ka *Kademlia) CollectFromShortlist(shortlist *Shortlist) string {
 	sllen := len(*shortlist)
 	if sllen == 0 {
@@ -567,6 +565,7 @@ func (ka *Kademlia) CollectFromShortlist(shortlist *Shortlist) string {
 	}
 	return ret
 }
+
 func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 	// For project 2!
 	// Initialize the shortlist
@@ -578,15 +577,17 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 	for !stop {
 		alphacons := ka.GetCons(&shortlist, alpha)
 		times := len(alphacons)
-		// fmt.Println(times, " parallel RPCs")
+		fmt.Println(times, " parallel RPCs")
 		for i := 0; i < times; i += 1 {
 			go ka.IterFindNode(id, alphacons[i], ch)
 		}
-		// fmt.Println("before update shortlist")
+		fmt.Println("before update shortlist")
 		// Update shortlist
 		signal := ka.UpdateShortList(ch, &shortlist, id, times)
+
 		//continue or stop
-		// fmt.Println(signal)
+		fmt.Println(signal)
+
 		switch signal {
 		case "Full":
 			stop = true
@@ -607,14 +608,15 @@ func (ka *Kademlia) DoIterativeFindNode(id ID) string {
 }
 
 func (k *Kademlia) DoIterativeStore(key ID, value []byte) string {
-// For project 2!
+	// For project 2!
 	nodes_string := k.DoIterativeFindNode(key)
 	contacts := parseResult(nodes_string)
 	for _, i := range contacts {
 		k.DoStore(&i, key, value)
 	}
-	return "OK: "+ contacts[len(contacts)-1].NodeID.AsString()
-//return "ERR: Not implemented"
+	return contacts[len(contacts)-1].NodeID.AsString()
+
+	//return "ERR: Not implemented"
 }
 
 func (ka *Kademlia) DoIterativeFindValue(id ID) string {
@@ -632,19 +634,16 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 	for !stop {
 		alphacons := ka.GetCons(&shortlist, alpha)
 		times := len(alphacons)
-		// fmt.Println(times, " parallel RPCs")
+		fmt.Println(times, " parallel RPCs")
 		for i := 0; i < times; i += 1 {
 			go ka.IterFindValue(id, alphacons[i], ch)
 		}
-		// fmt.Println("before update shortlist")
+		fmt.Println("before update shortlist")
 		// Update shortlist
 		signal := ka.UpdateShortList(ch, &shortlist, id, times)
+
 		//continue or stop
-		// fmt.Println(signal)
-		// fmt.Println(len(shortlist))
-		// for _,item := range shortlist {
-		// 	fmt.Println(item.active)
-		// 	}
+		fmt.Println(signal)
 		switch signal {
 		case "Full":
 			stop = true
@@ -653,28 +652,25 @@ func (ka *Kademlia) DoIterativeFindValue(id ID) string {
 				kcons := ka.GetCons(&shortlist, k)
 				times := len(kcons)
 				for i := 0; i < times; i += 1 {
-					go ka.IterFindValue(id, kcons[i], ch)
+					go ka.IterFindNode(id, kcons[i], ch)
 				}
 				signal = ka.UpdateShortList(ch, &shortlist, id, times)
-				if string(signal[0]) == "O" {
-					ka.DoStore(&(shortlist[0].contact), id, []byte(signal[46:]))
+				if string(signal[0]) == "O"{
+					ka.DoStore(&(shortlist[0].contact),id,[]byte(signal[46:]))
 					return signal
 				}
-				// fmt.Println(signal)
-				// for _,item1 := range shortlist {
-				// 	fmt.Println(item1.active)
-				// 	}
 			}
 		case "Continue":
 		default:
-			// fmt.Println("!!!!!!!!!!!!!")
-			//ka.DoStore(&(shortlist[0].contact), id, []byte(signal[42:]))
-			//fmt.Println(shortlist.contact)
 			return signal
 		}
 	}
+
 	return "ERR: Can not Find It"
+
+	return "ERR: Not implemented"
 }
+
 
 
 ///////////////proj3
@@ -694,18 +690,24 @@ func (k *Kademlia) Unvanish(NodeID ID, VDOID ID) string {
 		return "ERR: Not a valid NodeID!"
 	}
 	var vdo VanashingDataObject
-	err := k.DoGetVDO(c.Host, c.Port, VDOID, vdo)
+	err := k.DoGetVDO(c.Host, c.Port, VDOID, &vdo)
 	if err != nil {
 		log.Print(err)
 		return "ERR: Cannot get VDO object!"
 	}
 	data := UnvanishData(*k, vdo)
+	if(data == nil) {
+		return "ERR: Cannot get T shared keys"
+	}
 	return "OK: " + string(data)
 }
 
-func(k *Kademlia) DoGetVDO(host net.IP, port uint16, VDOID ID, vdo VanashingDataObject) error {
+func(k *Kademlia) DoGetVDO(host net.IP, port uint16, VDOID ID, vdo *VanashingDataObject) error {
+	// port_str := strconv.Itoa(int(port))
+	// client, err := rpc.DialHTTPPath("tcp", host.String()+":"+port_str,rpc.DefaultRPCPath+port_str)
 	dest := ContactToDest(host, port)
-	client, err := rpc.DialHTTP("tcp",dest)
+	client, err := rpc.DialHTTP("tcp", dest)
+
 	if err != nil {
 		log.Print(err)
 		return err
@@ -725,7 +727,7 @@ func(k *Kademlia) DoGetVDO(host net.IP, port uint16, VDOID ID, vdo VanashingData
 		return &MyError{"MsgID not Match"}
 	}
 	k.UpdateBuckets(res.Sender)
-	vdo = res.VDO
+	*vdo = res.VDO
 	return nil
 }
 

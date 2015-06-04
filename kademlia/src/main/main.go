@@ -43,8 +43,7 @@ func main() {
 	// Confirm our server is up with a PING request and then exit.
 	// Your code should loop forever, reading instructions from stdin and
 	// printing their results to stdout. See README.txt for more details.
-	_, port, _ := net.SplitHostPort(firstPeerStr)
-	client, err := rpc.DialHTTPPath("tcp", firstPeerStr, rpc.DefaultRPCPath+port)
+	client, err := rpc.DialHTTP("tcp", firstPeerStr)
 	if err != nil {
 		log.Fatal("DialHTTP: ", err)
 	}
@@ -284,19 +283,45 @@ func executeLine(k *kademlia.Kademlia, line string) (response string) {
 		response = k.DoIterativeFindValue(key)
 
 	case toks[0] == "vanish":
-		// performa an iterative find value
 		if len(toks) != 5 {
-			response = "usage: vanish [VDO ID] [data] [numberKeys] [threshold]"
+			response = "Usage: vanish [VdoID] [data] [NumberKeys] [Threshold]"
 			return
 		}
-		
-	case toks[0] == "unvanish":
-		// performa an iterative find value
-		if len(toks) != 3 {
-			response = "usage: unvanish [Node ID] [VDO ID]"
+		VdoID, err := kademlia.IDFromString(toks[1])
+		if err != nil {
+			response = "ERR: Provided an invalid key (" + toks[1] + ")"
 			return
 		}
-		// response = UnvanishData()
+		data := []byte(toks[2])
+		tmp1, err1 := strconv.Atoi(toks[3])
+		if err1 != nil{
+			response = "ERR Cannot convert " + toks[3] + "to type byte"
+			return
+		}
+		NumberKeys := byte(tmp1)
+		tmp2, err2 := strconv.Atoi(toks[4])
+		if err2 != nil{
+			response = "ERR Cannot convert " + toks[4] + "to type byte"
+			return
+		}
+		Threshold := byte(tmp2)
+		response = k.Vanish(VdoID, data, NumberKeys, Threshold)
+
+	case toks[0] == "Unvanish":
+		if len(toks) != 3{
+			response = "Usage: unvanish [NodeID] [VdoID]"
+		}
+		NodeID, err := kademlia.IDFromString(toks[1])
+		if err != nil {
+			response = "ERR: Provided an invalid key (" + toks[1] + ")"
+			return
+		}
+		VdoID, err := kademlia.IDFromString(toks[2])
+		if err != nil {
+			response = "ERR: Provided an invalid key (" + toks[2] + ")"
+			return
+		}
+		response = k.Unvanish(NodeID, VdoID)
 
 	default:
 		response = "ERR: Unknown command"

@@ -6,7 +6,7 @@ package kademlia
 
 import (
 	"net"
-	//"fmt"
+	"fmt"
 	"sort"
 	"log"
 )
@@ -68,7 +68,7 @@ func (kc *KademliaCore) Store(req StoreRequest, res *StoreResult) error {
 	kc.kademlia.Storage[req.Key] = req.Value
 	kc.kademlia.Lock.Unlock()
 	kc.kademlia.UpdateBuckets(req.Sender)
-	// fmt.Println(kc.kademlia.NodeID.AsString()," : ",kc.kademlia.Storage)
+	fmt.Println(kc.kademlia.NodeID.AsString()," : ",kc.kademlia.Storage)
 	kc.kademlia.UpdateBuckets(req.Sender)
 	return nil
 }
@@ -144,8 +144,7 @@ func (kc *KademliaCore) FindNode(req FindNodeRequest, res *FindNodeResult) error
 		//sort the contacts and return
 		sort.Sort(NodeSlice(NodeList))
 		for i := 0; i < k; i++ {
-			// res.Nodes[i] = CopyContact(NodeList[i].contact)
-			res.Nodes = append(res.Nodes, CopyContact(NodeList[i].contact))
+			res.Nodes[i] = CopyContact(NodeList[i].contact)
 		}
 	}
 	kc.kademlia.UpdateBuckets(req.Sender)
@@ -203,6 +202,7 @@ func (kc *KademliaCore) FindValue(req FindValueRequest, res *FindValueResult) er
 	}
 	return nil
 }
+
 
 //proj 3
 

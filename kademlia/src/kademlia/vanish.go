@@ -8,6 +8,7 @@ import (
     "time"
 	mathrand "math/rand"
 	"sss"
+	"fmt"
 )
 
 type VanashingDataObject struct {
@@ -71,10 +72,35 @@ func decrypt(key []byte, ciphertext []byte) (text []byte) {
 	stream.XORKeyStream(ciphertext, ciphertext)
 	return ciphertext
 }
-
 func VanishData(kadem Kademlia, data []byte, numberKeys byte,
 	threshold byte) (vdo VanashingDataObject) {
-	return
+	k := GenerateRandomCryptoKey()
+	Ciphertext  := encrypt(k, data)
+	m,_  := sss.Split(numberKeys, threshold, k)
+	l := GenerateRandomAccessKey()
+	ids := CalculateSharedKeyLocations(l, int64(numberKeys))
+		// all := make([]byte,0)
+		// all = append(all,byte(i))
+		// for _,b := range m[byte(i)] {
+		// 	all=append(all,b)
+		// }
+		// kadem.DoStore(&(kadem.SelfContact), ids[i], all)
+	i:=0
+	for key, val := range m {
+		all := make([]byte, 0)
+		all = append(all,key)
+		all = append(all, val...)
+		kadem.DoIterativeStore(ids[i],all)
+		i = i+1
+	}
+
+	vdo.AccessKey=l
+	vdo.Ciphertext=Ciphertext
+	vdo.NumberKeys=numberKeys
+	vdo.Threshold=threshold
+
+	//kadem.DoStore(&(kadem.SelfContact), key ID, value []byte)
+	return vdo
 }
 
 func UnvanishData(kadem Kademlia, vdo VanashingDataObject) (data []byte) {
@@ -86,21 +112,30 @@ func UnvanishData(kadem Kademlia, vdo VanashingDataObject) (data []byte) {
 	//need convert ids to shares
 	// ids : []ID   shares : map[byte][]byte
 	shares := make(map[byte][]byte)
-	ids = ids[0:int64(Thres_hold)]
+	// ids = ids[0:int64(Thres_hold)]
 	for _, item := range ids {
 		response := kadem.DoIterativeFindValue(item)
+		if(response[0] != 'O') {
+			continue
+		}
 		//problem?
-		parse_response(response, shares)
+		parse_response(response, &shares)
+	}
+	fmt.Println(int(Thres_hold))
+	if(len(shares) < int(Thres_hold)) {
+		fmt.Printf("Can not recover data")
+		return
 	}
 	secret := sss.Combine(shares)
+	fmt.Println(len(shares))
 	data = decrypt(secret, Cipher_text)
 
 	return
 }
 
-func parse_response(response string, shares map[byte][]byte) {
-		response = response[163:]
+func parse_response(response string, shares *map[byte][]byte) {
+		response = response[46:]
 		key := byte(response[0])
 		value := []byte(response[1:])
-		shares[key] = value
+		(*shares)[key] = value
 }
